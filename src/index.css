@@ -95,12 +95,13 @@
   }
 }
 
-.transition-all {
-  @apply transition-all duration-200 ease-in-out;
+/* Change from class to custom utility */
+.smooth-transition {
+  transition: all 0.2s ease-in-out;
 }
 
 .sidebar-item {
-  @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all;
+  @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md smooth-transition;
   @apply text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
 }
 
