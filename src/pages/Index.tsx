@@ -29,19 +29,47 @@ const Index = () => {
     }
   }, [isDarkMode]);
 
+  // Get the translated title for placeholders
+  const getTranslatedTitle = (id: string) => {
+    const translations: Record<string, { en: string, vi: string }> = {
+      "administrator": { en: "Administrator", vi: "Quản trị viên" },
+      "accounts": { en: "Accounts", vi: "Tài khoản" },
+      "roles": { en: "Roles", vi: "Vai trò" },
+      "recruitment": { en: "Recruitment", vi: "Tuyển dụng" },
+      "applies": { en: "Applies", vi: "Đơn ứng tuyển" },
+      "interview": { en: "Interview", vi: "Phỏng vấn" },
+      "rule-assessment": { en: "Rule Assessment", vi: "Đánh giá" },
+      "qa": { en: "Q&A", vi: "Hỏi & Đáp" },
+      "type": { en: "Type", vi: "Loại" },
+      "questions": { en: "Questions", vi: "Câu hỏi" },
+      "history": { en: "History", vi: "Lịch sử" },
+    };
+    
+    return translations[id] 
+      ? translations[id][language] 
+      : id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+  };
+
   // Render the active content based on sidebar selection
   const renderContent = () => {
     switch (activeItem) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard language={language} />;
       default:
-        return <Placeholder title={activeItem.charAt(0).toUpperCase() + activeItem.slice(1).replace(/-/g, ' ')} />;
+        return <Placeholder 
+          title={getTranslatedTitle(activeItem)} 
+          language={language} 
+        />;
     }
   };
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar activeItem={activeItem} setActiveItem={setActiveItem} />
+      <Sidebar 
+        activeItem={activeItem} 
+        setActiveItem={setActiveItem} 
+        language={language}
+      />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
