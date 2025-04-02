@@ -13,7 +13,10 @@ import {
   History, 
   LogOut,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft,
+  ChevronLeftSquare,
+  PanelLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,9 +79,11 @@ interface SidebarProps {
   activeItem: string;
   setActiveItem: (item: string) => void;
   language: 'en' | 'vi';
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
-const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
+const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSidebar }: SidebarProps) => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     administrator: false,
     recruitment: false,
@@ -107,7 +112,6 @@ const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
       questions: "Questions",
       history: "History",
       logout: "Log Out",
-      team: "NhiLe Team"
     },
     vi: {
       dashboard: "Bảng điều khiển",
@@ -123,22 +127,31 @@ const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
       questions: "Câu hỏi",
       history: "Lịch sử",
       logout: "Đăng xuất",
-      team: "Đội ngũ NhiLe"
     }
   };
 
   const t = translations[language];
 
   return (
-    <aside className="h-screen w-56 bg-sidebar-background flex flex-col border-r border-sidebar-border">
-      <div className="p-4">
-        <h1 className="text-xl font-semibold">{t.team}</h1>
+    <aside className={cn(
+      "h-screen bg-sidebar-background flex flex-col border-r border-sidebar-border smooth-transition relative",
+      isCollapsed ? "w-16" : "w-56"
+    )}>
+      <div className="p-4 flex justify-between items-center">
+        {!isCollapsed && <h1 className="text-xl font-semibold">NhiLe Team</h1>}
+        <button 
+          onClick={toggleSidebar} 
+          className="p-1 rounded-lg hover:bg-sidebar-accent smooth-transition"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <PanelLeft size={18} className={cn("smooth-transition", isCollapsed ? "rotate-180" : "")} />
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-2 space-y-1">
         <SidebarItem
           icon={LayoutDashboard}
-          label={t.dashboard}
+          label={isCollapsed ? "" : t.dashboard}
           active={activeItem === "dashboard"}
           onClick={() => setActiveItem("dashboard")}
         />
@@ -147,14 +160,14 @@ const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
         <div>
           <SidebarItem
             icon={User}
-            label={t.administrator}
+            label={isCollapsed ? "" : t.administrator}
             active={activeItem === "administrator"}
-            hasChildren
+            hasChildren={!isCollapsed}
             expanded={expandedSections.administrator}
-            onToggle={() => toggleSection("administrator")}
+            onToggle={() => !isCollapsed && toggleSection("administrator")}
           />
           
-          {expandedSections.administrator && (
+          {!isCollapsed && expandedSections.administrator && (
             <div className="mt-1 space-y-1">
               <SidebarItemNested
                 icon={Users}
@@ -176,14 +189,14 @@ const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
         <div>
           <SidebarItem
             icon={Briefcase}
-            label={t.recruitment}
+            label={isCollapsed ? "" : t.recruitment}
             active={activeItem === "recruitment"}
-            hasChildren
+            hasChildren={!isCollapsed}
             expanded={expandedSections.recruitment}
-            onToggle={() => toggleSection("recruitment")}
+            onToggle={() => !isCollapsed && toggleSection("recruitment")}
           />
           
-          {expandedSections.recruitment && (
+          {!isCollapsed && expandedSections.recruitment && (
             <div className="mt-1 space-y-1">
               <SidebarItemNested
                 icon={FileText}
@@ -211,14 +224,14 @@ const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
         <div>
           <SidebarItem
             icon={HelpCircle}
-            label={t.qa}
+            label={isCollapsed ? "" : t.qa}
             active={activeItem === "qa"}
-            hasChildren
+            hasChildren={!isCollapsed}
             expanded={expandedSections.qa}
-            onToggle={() => toggleSection("qa")}
+            onToggle={() => !isCollapsed && toggleSection("qa")}
           />
           
-          {expandedSections.qa && (
+          {!isCollapsed && expandedSections.qa && (
             <div className="mt-1 space-y-1">
               <SidebarItemNested
                 icon={FileType}
@@ -246,7 +259,7 @@ const Sidebar = ({ activeItem, setActiveItem, language }: SidebarProps) => {
       <div className="p-2 border-t border-sidebar-border">
         <SidebarItem 
           icon={LogOut} 
-          label={t.logout} 
+          label={isCollapsed ? "" : t.logout} 
           onClick={() => console.log("Logging out...")}
         />
       </div>

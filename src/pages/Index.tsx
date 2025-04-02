@@ -1,18 +1,24 @@
-
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Dashboard from "@/components/Dashboard";
 import Placeholder from "@/components/Placeholder";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
   const [activeItem, setActiveItem] = useState("dashboard");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [language, setLanguage] = useState<'en' | 'vi'>('en');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Handle theme toggle
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
+  };
+
+  // Handle sidebar toggle
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
   };
 
   // Handle language toggle
@@ -69,9 +75,11 @@ const Index = () => {
         activeItem={activeItem} 
         setActiveItem={setActiveItem} 
         language={language}
+        isCollapsed={isCollapsed}
+        toggleSidebar={toggleSidebar}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={cn("flex-1 flex flex-col overflow-hidden smooth-transition")}>
         <Header 
           isDarkMode={isDarkMode} 
           toggleTheme={toggleTheme} 
