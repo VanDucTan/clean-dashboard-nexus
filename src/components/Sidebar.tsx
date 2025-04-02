@@ -134,11 +134,16 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
 
   return (
     <aside className={cn(
-      "h-screen bg-sidebar-background flex flex-col border-r border-sidebar-border smooth-transition relative",
+      "h-screen bg-sidebar-background flex flex-col border-r border-sidebar-border smooth-transition overflow-hidden",
       isCollapsed ? "w-16" : "w-56"
     )}>
       <div className="p-4 flex justify-between items-center">
-        {!isCollapsed && <h1 className="text-xl font-semibold">NhiLe Team</h1>}
+        {!isCollapsed && (
+          <h1 className={cn("text-xl font-semibold overflow-hidden whitespace-nowrap smooth-transition", 
+            isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
+            NhiLe Team
+          </h1>
+        )}
         <button 
           onClick={toggleSidebar} 
           className="p-1 rounded-lg hover:bg-sidebar-accent smooth-transition"
@@ -168,7 +173,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
           />
           
           {!isCollapsed && expandedSections.administrator && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
               <SidebarItemNested
                 icon={Users}
                 label={t.accounts}
@@ -197,7 +202,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
           />
           
           {!isCollapsed && expandedSections.recruitment && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
               <SidebarItemNested
                 icon={FileText}
                 label={t.applies}
@@ -232,7 +237,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
           />
           
           {!isCollapsed && expandedSections.qa && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
               <SidebarItemNested
                 icon={FileType}
                 label={t.type}

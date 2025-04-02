@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -79,14 +80,15 @@ const Index = () => {
         toggleSidebar={toggleSidebar}
       />
       
-      <div className={cn("flex-1 flex flex-col overflow-hidden smooth-transition")}>
+      <div className={cn("flex-1 flex flex-col overflow-hidden smooth-transition", 
+        isCollapsed ? "pl-0" : "")}>
         <Header 
           isDarkMode={isDarkMode} 
           toggleTheme={toggleTheme} 
           language={language} 
           toggleLanguage={toggleLanguage} 
         />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto smooth-transition">
           {renderContent()}
         </main>
       </div>

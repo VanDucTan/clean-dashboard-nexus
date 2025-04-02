@@ -95,9 +95,9 @@
   }
 }
 
-/* Change from class to custom utility */
+/* Improved smooth transition with better easing */
 .smooth-transition {
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-item {
