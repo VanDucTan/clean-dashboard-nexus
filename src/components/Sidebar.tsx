@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { 
   LayoutDashboard, 
@@ -103,6 +102,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       administrator: "Administrator",
       accounts: "Accounts",
       roles: "Roles",
+      teams: "Teams",
       recruitment: "Recruitment",
       applies: "Applies", 
       interview: "Interview",
@@ -118,6 +118,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       administrator: "Quản trị viên",
       accounts: "Tài khoản",
       roles: "Vai trò",
+      teams: "Nhóm",
       recruitment: "Tuyển dụng",
       applies: "Đơn ứng tuyển", 
       interview: "Phỏng vấn",
@@ -189,6 +190,14 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
             </div>
           )}
         </div>
+
+        {/* Teams section as a standalone item */}
+        <SidebarItem
+          icon={Users}
+          label={isCollapsed ? "" : t.teams}
+          active={activeItem === "teams"}
+          onClick={() => setActiveItem("teams")}
+        />
 
         {/* Recruitment section with nested items */}
         <div>
