@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   LayoutDashboard, 
   User, 
@@ -83,6 +86,9 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSidebar }: SidebarProps) => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const { toast } = useToast();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     administrator: false,
     recruitment: false,
@@ -94,6 +100,15 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       ...prev,
       [section]: !prev[section]
     }));
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: language === 'en' ? "Logged out successfully" : "Đã đăng xuất",
+      description: language === 'en' ? "Redirecting to login..." : "Đang chuyển hướng đến trang đăng nhập...",
+    });
+    navigate("/login");
   };
 
   const translations = {
@@ -274,7 +289,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
         <SidebarItem 
           icon={LogOut} 
           label={isCollapsed ? "" : t.logout} 
-          onClick={() => console.log("Logging out...")}
+          onClick={handleLogout}
         />
       </div>
     </aside>
