@@ -21,6 +21,7 @@ import {
   PanelLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import LogoutDialog from "./LogoutDialog";
 
 interface SidebarItemProps {
   icon: React.ElementType;
@@ -94,6 +95,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
     recruitment: false,
     qa: false
   });
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -149,150 +151,158 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
   const t = translations[language];
 
   return (
-    <aside className={cn(
-      "h-screen bg-sidebar-background flex flex-col border-r border-sidebar-border smooth-transition overflow-hidden",
-      isCollapsed ? "w-16" : "w-56"
-    )}>
-      <div className="p-4 flex justify-between items-center">
-        {!isCollapsed && (
-          <h1 className={cn("text-xl font-semibold overflow-hidden whitespace-nowrap smooth-transition", 
-            isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
-            NhiLe Team
-          </h1>
-        )}
-        <button 
-          onClick={toggleSidebar} 
-          className="p-1 rounded-lg hover:bg-sidebar-accent smooth-transition"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <PanelLeft size={18} className={cn("smooth-transition", isCollapsed ? "rotate-180" : "")} />
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
-        <SidebarItem
-          icon={LayoutDashboard}
-          label={isCollapsed ? "" : t.dashboard}
-          active={activeItem === "dashboard"}
-          onClick={() => setActiveItem("dashboard")}
-        />
-
-        {/* Administrator section with nested items */}
-        <div>
-          <SidebarItem
-            icon={User}
-            label={isCollapsed ? "" : t.administrator}
-            active={activeItem === "administrator"}
-            hasChildren={!isCollapsed}
-            expanded={expandedSections.administrator}
-            onToggle={() => !isCollapsed && toggleSection("administrator")}
-          />
-          
-          {!isCollapsed && expandedSections.administrator && (
-            <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
-              <SidebarItemNested
-                icon={Users}
-                label={t.accounts}
-                active={activeItem === "accounts"}
-                onClick={() => setActiveItem("accounts")}
-              />
-              <SidebarItemNested
-                icon={Shield}
-                label={t.roles}
-                active={activeItem === "roles"}
-                onClick={() => setActiveItem("roles")}
-              />
-            </div>
+    <>
+      <aside className={cn(
+        "h-screen bg-sidebar-background flex flex-col border-r border-sidebar-border smooth-transition overflow-hidden",
+        isCollapsed ? "w-16" : "w-56"
+      )}>
+        <div className="p-4 flex justify-between items-center">
+          {!isCollapsed && (
+            <h1 className={cn("text-xl font-semibold overflow-hidden whitespace-nowrap smooth-transition", 
+              isCollapsed ? "opacity-0 w-0" : "opacity-100 w-auto")}>
+              NhiLe Team
+            </h1>
           )}
+          <button 
+            onClick={toggleSidebar} 
+            className="p-1 rounded-lg hover:bg-sidebar-accent smooth-transition"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <PanelLeft size={18} className={cn("smooth-transition", isCollapsed ? "rotate-180" : "")} />
+          </button>
         </div>
 
-        {/* Teams section as a standalone item */}
-        <SidebarItem
-          icon={Users}
-          label={isCollapsed ? "" : t.teams}
-          active={activeItem === "teams"}
-          onClick={() => setActiveItem("teams")}
-        />
-
-        {/* Recruitment section with nested items */}
-        <div>
+        <nav className="flex-1 overflow-y-auto p-2 space-y-1">
           <SidebarItem
-            icon={Briefcase}
-            label={isCollapsed ? "" : t.recruitment}
-            active={activeItem === "recruitment"}
-            hasChildren={!isCollapsed}
-            expanded={expandedSections.recruitment}
-            onToggle={() => !isCollapsed && toggleSection("recruitment")}
+            icon={LayoutDashboard}
+            label={isCollapsed ? "" : t.dashboard}
+            active={activeItem === "dashboard"}
+            onClick={() => setActiveItem("dashboard")}
           />
-          
-          {!isCollapsed && expandedSections.recruitment && (
-            <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
-              <SidebarItemNested
-                icon={FileText}
-                label={t.applies}
-                active={activeItem === "applies"}
-                onClick={() => setActiveItem("applies")}
-              />
-              <SidebarItemNested
-                icon={MessageSquare}
-                label={t.interview}
-                active={activeItem === "interview"}
-                onClick={() => setActiveItem("interview")}
-              />
-              <SidebarItemNested
-                icon={FileText}
-                label={t.ruleAssessment}
-                active={activeItem === "rule-assessment"}
-                onClick={() => setActiveItem("rule-assessment")}
-              />
-            </div>
-          )}
-        </div>
 
-        {/* Q&A section with nested items */}
-        <div>
+          {/* Administrator section with nested items */}
+          <div>
+            <SidebarItem
+              icon={User}
+              label={isCollapsed ? "" : t.administrator}
+              active={activeItem === "administrator"}
+              hasChildren={!isCollapsed}
+              expanded={expandedSections.administrator}
+              onToggle={() => !isCollapsed && toggleSection("administrator")}
+            />
+            
+            {!isCollapsed && expandedSections.administrator && (
+              <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
+                <SidebarItemNested
+                  icon={Users}
+                  label={t.accounts}
+                  active={activeItem === "accounts"}
+                  onClick={() => setActiveItem("accounts")}
+                />
+                <SidebarItemNested
+                  icon={Shield}
+                  label={t.roles}
+                  active={activeItem === "roles"}
+                  onClick={() => setActiveItem("roles")}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Teams section as a standalone item */}
           <SidebarItem
-            icon={HelpCircle}
-            label={isCollapsed ? "" : t.qa}
-            active={activeItem === "qa"}
-            hasChildren={!isCollapsed}
-            expanded={expandedSections.qa}
-            onToggle={() => !isCollapsed && toggleSection("qa")}
+            icon={Users}
+            label={isCollapsed ? "" : t.teams}
+            active={activeItem === "teams"}
+            onClick={() => setActiveItem("teams")}
           />
-          
-          {!isCollapsed && expandedSections.qa && (
-            <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
-              <SidebarItemNested
-                icon={FileType}
-                label={t.type}
-                active={activeItem === "type"}
-                onClick={() => setActiveItem("type")}
-              />
-              <SidebarItemNested
-                icon={HelpCircle}
-                label={t.questions}
-                active={activeItem === "questions"}
-                onClick={() => setActiveItem("questions")}
-              />
-              <SidebarItemNested
-                icon={History}
-                label={t.history}
-                active={activeItem === "history"}
-                onClick={() => setActiveItem("history")}
-              />
-            </div>
-          )}
-        </div>
-      </nav>
 
-      <div className="p-2 border-t border-sidebar-border">
-        <SidebarItem 
-          icon={LogOut} 
-          label={isCollapsed ? "" : t.logout} 
-          onClick={handleLogout}
-        />
-      </div>
-    </aside>
+          {/* Recruitment section with nested items */}
+          <div>
+            <SidebarItem
+              icon={Briefcase}
+              label={isCollapsed ? "" : t.recruitment}
+              active={activeItem === "recruitment"}
+              hasChildren={!isCollapsed}
+              expanded={expandedSections.recruitment}
+              onToggle={() => !isCollapsed && toggleSection("recruitment")}
+            />
+            
+            {!isCollapsed && expandedSections.recruitment && (
+              <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
+                <SidebarItemNested
+                  icon={FileText}
+                  label={t.applies}
+                  active={activeItem === "applies"}
+                  onClick={() => setActiveItem("applies")}
+                />
+                <SidebarItemNested
+                  icon={MessageSquare}
+                  label={t.interview}
+                  active={activeItem === "interview"}
+                  onClick={() => setActiveItem("interview")}
+                />
+                <SidebarItemNested
+                  icon={FileText}
+                  label={t.ruleAssessment}
+                  active={activeItem === "rule-assessment"}
+                  onClick={() => setActiveItem("rule-assessment")}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Q&A section with nested items */}
+          <div>
+            <SidebarItem
+              icon={HelpCircle}
+              label={isCollapsed ? "" : t.qa}
+              active={activeItem === "qa"}
+              hasChildren={!isCollapsed}
+              expanded={expandedSections.qa}
+              onToggle={() => !isCollapsed && toggleSection("qa")}
+            />
+            
+            {!isCollapsed && expandedSections.qa && (
+              <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
+                <SidebarItemNested
+                  icon={FileType}
+                  label={t.type}
+                  active={activeItem === "type"}
+                  onClick={() => setActiveItem("type")}
+                />
+                <SidebarItemNested
+                  icon={HelpCircle}
+                  label={t.questions}
+                  active={activeItem === "questions"}
+                  onClick={() => setActiveItem("questions")}
+                />
+                <SidebarItemNested
+                  icon={History}
+                  label={t.history}
+                  active={activeItem === "history"}
+                  onClick={() => setActiveItem("history")}
+                />
+              </div>
+            )}
+          </div>
+        </nav>
+
+        <div className="p-2 border-t border-sidebar-border">
+          <SidebarItem
+            icon={LogOut}
+            label={isCollapsed ? "" : t.logout}
+            onClick={() => setIsLogoutDialogOpen(true)}
+          />
+        </div>
+      </aside>
+      
+      <LogoutDialog 
+        open={isLogoutDialogOpen} 
+        onOpenChange={setIsLogoutDialogOpen}
+        language={language}
+      />
+    </>
   );
 };
 
