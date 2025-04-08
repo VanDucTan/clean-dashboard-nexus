@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Dashboard from "@/components/Dashboard";
 import Placeholder from "@/components/Placeholder";
+import RolesManagement from "@/components/RolesManagement";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -62,6 +62,8 @@ const Index = () => {
     switch (activeItem) {
       case "dashboard":
         return <Dashboard language={language} />;
+      case "roles":
+        return <RolesManagement language={language} />;
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
