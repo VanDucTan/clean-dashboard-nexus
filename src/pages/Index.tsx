@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Dashboard from "@/components/Dashboard";
 import Placeholder from "@/components/Placeholder";
 import RolesManagement from "@/components/RolesManagement";
+import TeamsManagement from "@/components/TeamsManagement";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -64,6 +65,8 @@ const Index = () => {
         return <Dashboard language={language} />;
       case "roles":
         return <RolesManagement language={language} />;
+      case "teams":
+        return <TeamsManagement language={language} />;
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
