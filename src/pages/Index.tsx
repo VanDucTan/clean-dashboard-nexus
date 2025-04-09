@@ -4,6 +4,8 @@ import Header from "@/components/Header";
 import Dashboard from "@/components/Dashboard";
 import Accounts from "@/components/Accounts";
 import Placeholder from "@/components/Placeholder";
+import RolesManagement from "@/components/RolesManagement";
+import TeamsManagement from "@/components/TeamsManagement";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -52,13 +54,16 @@ const Index = () => {
       : id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
   };
 
-  const renderContent = () => {
+    const renderContent = () => {
     switch (activeItem) {
       case "dashboard":
         return <Dashboard language={language} />;
       case "accounts":
         return <Accounts language={language} />;
-     
+      case "roles":
+        return <RolesManagement language={language} />;
+      case "teams":
+        return <TeamsManagement language={language} />;
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
@@ -66,6 +71,7 @@ const Index = () => {
         />;
     }
   };
+
 
   return (
     <div className="flex h-screen bg-background">
