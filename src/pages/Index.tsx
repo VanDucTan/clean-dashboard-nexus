@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import Dashboard from "@/components/Dashboard";
+import Accounts from "@/components/Accounts";
 import Placeholder from "@/components/Placeholder";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +62,8 @@ const Index = () => {
     switch (activeItem) {
       case "dashboard":
         return <Dashboard language={language} />;
+      case "accounts":
+        return <Accounts language={language} />;
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
