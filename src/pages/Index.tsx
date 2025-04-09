@@ -12,22 +12,18 @@ const Index = () => {
   const [language, setLanguage] = useState<'en' | 'vi'>('en');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Handle theme toggle
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode);
   };
 
-  // Handle sidebar toggle
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  // Handle language toggle
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'vi' : 'en');
   };
 
-  // Apply dark mode class to html element
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -36,7 +32,6 @@ const Index = () => {
     }
   }, [isDarkMode]);
 
-  // Get the translated title for placeholders
   const getTranslatedTitle = (id: string) => {
     const translations: Record<string, { en: string, vi: string }> = {
       "administrator": { en: "Administrator", vi: "Quản trị viên" },
@@ -57,13 +52,13 @@ const Index = () => {
       : id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
   };
 
-  // Render the active content based on sidebar selection
   const renderContent = () => {
     switch (activeItem) {
       case "dashboard":
         return <Dashboard language={language} />;
       case "accounts":
         return <Accounts language={language} />;
+     
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
