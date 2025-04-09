@@ -47,6 +47,18 @@ interface Account {
   role: string;
 }
 
+interface Team {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface AccountsProps {
   language: 'en' | 'vi';
 }
@@ -103,6 +115,20 @@ const Accounts = ({ language }: AccountsProps) => {
       teams: '',
       role: 'admin'
     }
+  ]);
+
+  // Thêm states mới để lưu trữ danh sách teams và roles
+  const [teams, setTeams] = useState<Team[]>([
+    { id: '1', name: 'IT' },
+    { id: '2', name: 'HR' },
+    { id: '3', name: 'Marketing' },
+    { id: '4', name: 'Sales' }
+  ]);
+
+  const [roles, setRoles] = useState<Role[]>([
+    { id: '1', name: 'user', description: 'Normal user' },
+    { id: '2', name: 'admin', description: 'Administrator' },
+    { id: '3', name: 'owner', description: 'Owner' }
   ]);
 
   const translations = {
@@ -357,9 +383,11 @@ const Accounts = ({ language }: AccountsProps) => {
                         <SelectValue placeholder={t.selectTeam} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="IT">IT</SelectItem>
-                        <SelectItem value="HR">HR</SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
+                        {teams.map((team) => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -373,9 +401,11 @@ const Accounts = ({ language }: AccountsProps) => {
                         <SelectValue placeholder={t.selectRole} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="owner">Owner</SelectItem>
+                        {roles.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -435,9 +465,11 @@ const Accounts = ({ language }: AccountsProps) => {
                     <SelectValue placeholder={t.selectTeam} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
+                    {teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -451,9 +483,11 @@ const Accounts = ({ language }: AccountsProps) => {
                     <SelectValue placeholder={t.selectRole} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="owner">Owner</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
