@@ -32,14 +32,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import CustomPagination from "@/components/ui/custom-pagination";
 import { format } from "date-fns";
 
 interface Permission {
@@ -138,6 +131,7 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [roles, setRoles] = useState<Role[]>(sampleRoles);
   const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -174,8 +168,8 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
       description: "Description",
       createdAt: "Created At",
       actions: "Actions",
-      edit: "Edit",
-      delete: "Delete",
+      editAction: "Edit",
+      deleteAction: "Delete",
       deleteConfirm: "Are you sure you want to delete this role?",
       deleteDescription: "This action cannot be undone. This will permanently delete the role and remove it from our servers.",
       cancel: "Cancel",
@@ -184,15 +178,16 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
       permissions: "Permissions",
       selectAll: "Select All",
       deselectAll: "Deselect All",
-      view: "View",
-      create: "Create",
-      edit: "Edit",
-      delete: "Delete",
+      viewAction: "View",
+      createAction: "Create",
+      editPermission: "Edit",
+      deletePermission: "Delete",
       module: "Module",
       noResults: "No roles found",
       roleAdded: "Role added successfully",
       roleUpdated: "Role updated successfully",
       roleDeleted: "Role deleted successfully",
+      rowsPerPage: "Rows per page",
     },
     vi: {
       title: "Quản lý vai trò",
@@ -202,8 +197,8 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
       description: "Mô tả",
       createdAt: "Ngày tạo",
       actions: "Thao tác",
-      edit: "Sửa",
-      delete: "Xóa",
+      editAction: "Sửa",
+      deleteAction: "Xóa",
       deleteConfirm: "Bạn có chắc chắn muốn xóa vai trò này?",
       deleteDescription: "Hành động này không thể hoàn tác. Vai trò sẽ bị xóa vĩnh viễn khỏi hệ thống.",
       cancel: "Hủy",
@@ -212,29 +207,29 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
       permissions: "Quyền",
       selectAll: "Chọn tất cả",
       deselectAll: "Bỏ chọn tất cả",
-      view: "Xem",
-      create: "Tạo",
-      edit: "Sửa",
-      delete: "Xóa",
+      viewAction: "Xem",
+      createAction: "Tạo",
+      editPermission: "Sửa",
+      deletePermission: "Xóa",
       module: "Phân hệ",
       noResults: "Không tìm thấy vai trò nào",
       roleAdded: "Thêm vai trò thành công",
       roleUpdated: "Cập nhật vai trò thành công",
       roleDeleted: "Xóa vai trò thành công",
+      rowsPerPage: "Hàng mỗi trang",
     }
   };
 
   const text = t[language];
 
   // Pagination
-  const itemsPerPage = 5;
   const filteredRoles = roles.filter(role => 
     role.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const totalPages = Math.ceil(filteredRoles.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredRoles.length / rowsPerPage);
   const paginatedRoles = filteredRoles.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
   );
 
   // Toggle role permissions view
@@ -460,7 +455,7 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
                         variant="ghost" 
                         size="icon"
                         onClick={() => openRoleDialog(role)}
-                        aria-label={text.edit}
+                        aria-label={text.editAction}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -469,7 +464,7 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
                         size="icon" 
                         className="text-destructive"
                         onClick={() => openDeleteDialog(role.id)}
-                        aria-label={text.delete}
+                        aria-label={text.deleteAction}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -487,22 +482,22 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
                               <div className="flex flex-wrap gap-1">
                                 {permission.actions.view && (
                                   <Badge variant="outline" className="bg-primary/10">
-                                    {text.view}
+                                    {text.viewAction}
                                   </Badge>
                                 )}
                                 {permission.actions.create && (
                                   <Badge variant="outline" className="bg-primary/10">
-                                    {text.create}
+                                    {text.createAction}
                                   </Badge>
                                 )}
                                 {permission.actions.edit && (
                                   <Badge variant="outline" className="bg-primary/10">
-                                    {text.edit}
+                                    {text.editPermission}
                                   </Badge>
                                 )}
                                 {permission.actions.delete && (
                                   <Badge variant="outline" className="bg-primary/10">
-                                    {text.delete}
+                                    {text.deletePermission}
                                   </Badge>
                                 )}
                               </div>
@@ -527,34 +522,21 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
       
       {/* Pagination */}
       {filteredRoles.length > 0 && (
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious 
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <PaginationItem key={page}>
-                <PaginationLink
-                  isActive={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-            
-            <PaginationItem>
-              <PaginationNext 
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <div className="mt-6">
+          <CustomPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowsPerPageChange={(value) => {
+              setRowsPerPage(value);
+              setCurrentPage(1);
+            }}
+            translations={{
+              rowsPerPage: text.rowsPerPage
+            }}
+          />
+        </div>
       )}
       
       {/* Add/Edit Role Dialog */}
@@ -562,7 +544,7 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
         <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingRole ? `${text.edit} ${editingRole.name}` : text.addRole}
+              {editingRole ? `${text.editAction} ${editingRole.name}` : text.addRole}
             </DialogTitle>
           </DialogHeader>
           
@@ -612,10 +594,10 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
               <div className="border rounded-md overflow-hidden">
                 <div className="grid grid-cols-5 gap-1 p-2 bg-muted font-medium text-sm">
                   <div className="col-span-1">{text.module}</div>
-                  <div className="text-center">{text.view}</div>
-                  <div className="text-center">{text.create}</div>
-                  <div className="text-center">{text.edit}</div>
-                  <div className="text-center">{text.delete}</div>
+                  <div className="text-center">{text.viewAction}</div>
+                  <div className="text-center">{text.createAction}</div>
+                  <div className="text-center">{text.editPermission}</div>
+                  <div className="text-center">{text.deletePermission}</div>
                 </div>
                 
                 {/* Select all for each action column */}
@@ -742,7 +724,7 @@ const RolesManagement = ({ language }: RolesManagementProps) => {
           <AlertDialogFooter>
             <AlertDialogCancel>{text.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteRole} className="bg-destructive text-destructive-foreground">
-              {text.delete}
+              {text.deleteAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
