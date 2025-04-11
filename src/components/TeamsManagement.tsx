@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { PlusCircle, Search, Edit, Trash2, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { PlusCircle, Search, Edit, Trash2 } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -39,14 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import CustomPagination from "@/components/ui/custom-pagination";
 import { format } from "date-fns";
 
 // Define interfaces
@@ -472,59 +465,19 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
           </Table>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm text-muted-foreground">
-              {t[language].rowsPerPage}
-            </p>
-            <Select
-              value={String(rowsPerPage)}
-              onValueChange={(value) => {
-                setRowsPerPage(Number(value));
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="h-8 w-16">
-                <SelectValue placeholder="10" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="15">15</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                />
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    onClick={() => setCurrentPage(page)}
-                    isActive={currentPage === page}
-                  >
-                    {page}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setCurrentPage}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setCurrentPage(1);
+          }}
+          translations={{
+            rowsPerPage: t[language].rowsPerPage
+          }}
+        />
       </div>
 
       {/* Add/Edit Team Dialog */}
