@@ -71,6 +71,8 @@ const Accounts = ({ language }: AccountsProps) => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
   const { toast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [newAccount, setNewAccount] = useState({
     email: '',
     fullname: '',
@@ -179,6 +181,23 @@ const Accounts = ({ language }: AccountsProps) => {
     account.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
     account.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAccounts.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const currentAccounts = filteredAccounts.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Handle rows per page change
+  const handleRowsPerPageChange = (value: string) => {
+    setRowsPerPage(Number(value));
+    setCurrentPage(1); // Reset to first page when changing rows per page
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -541,7 +560,7 @@ const Accounts = ({ language }: AccountsProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAccounts.map((account) => (
+            {currentAccounts.map((account) => (
               <TableRow key={account.id}>
                 <TableCell>{account.id}</TableCell>
                 <TableCell>{account.email}</TableCell>
@@ -570,6 +589,63 @@ const Accounts = ({ language }: AccountsProps) => {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex items-center justify-between space-x-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-500">Rows per page</span>
+          <Select
+            value={rowsPerPage.toString()}
+            onValueChange={handleRowsPerPageChange}
+          >
+            <SelectTrigger className="w-[70px]">
+              <SelectValue placeholder={rowsPerPage.toString()} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <div className="flex items-center">
+            <Input
+              className="w-12 h-8 text-center"
+              type="number"
+              value={currentPage}
+              onChange={(e) => {
+                const page = parseInt(e.target.value);
+                if (page > 0 && page <= totalPages) {
+                  handlePageChange(page);
+                }
+              }}
+              min={1}
+              max={totalPages}
+            />
+            <span className="mx-2">of {totalPages}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+
+        <div className="w-[200px]"></div> {/* Spacer to balance the layout */}
       </div>
     </div>
   );
