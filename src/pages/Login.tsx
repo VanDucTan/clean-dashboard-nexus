@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,12 +177,12 @@ const Login = () => {
                   Ghi nhớ đăng nhập
                 </Label>
               </div>
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-blue-500 hover:text-blue-400"
               >
                 Quên mật khẩu?
-              </a>
+              </Link>
             </div>
           </div>
 
