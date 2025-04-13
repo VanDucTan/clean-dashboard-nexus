@@ -22,7 +22,9 @@ interface CustomPaginationProps {
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (value: number) => void;
   translations: {
-    rowsPerPage: string;
+    showing: string;
+    of: string;
+    perPage: string;
   };
 }
 
@@ -38,7 +40,7 @@ const CustomPagination: React.FC<CustomPaginationProps> = ({
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-2">
         <p className="text-sm text-muted-foreground">
-          {translations.rowsPerPage}
+          {translations.perPage}
         </p>
         <Select
           value={String(rowsPerPage)}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
@@ -38,14 +38,12 @@ import {
 import { Label } from "./ui/label";
 import { Edit2, Trash2 } from "lucide-react";
 import { useToast } from "./ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-interface Account {
-  id: number;
-  email: string;
-  fullname: string;
-  teams: string;
-  role: string;
-}
+type Tables = Database['public']['Tables'];
+type Account = Tables['users']['Row'];
+type AccountInsert = Tables['users']['Insert'];
 
 interface Team {
   id: string;
@@ -71,51 +69,14 @@ const Accounts = ({ language }: AccountsProps) => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [deletingAccount, setDeletingAccount] = useState<Account | null>(null);
   const { toast } = useToast();
-  const [newAccount, setNewAccount] = useState({
+  const [newAccount, setNewAccount] = useState<Omit<AccountInsert, 'id' | 'created_at' | 'updated_at' | 'avatar_url' | 'password'>>({
     email: '',
-    fullname: '',
-    teams: '',
+    full_name: '',
     role: 'user'
   });
 
-  // Convert mock data to state
-  const [accounts, setAccounts] = useState<Account[]>([
-    {
-      id: 3,
-      email: 'nduylong9501@gmail.com', 
-      fullname: 'Nguyen Duy Long',
-      teams: '',
-      role: 'owner'
-    },
-    {
-      id: 5,
-      email: 'bakasi1910@gmail.com',
-      fullname: 'Duy Long',
-      teams: '',
-      role: 'owner'
-    },
-    {
-      id: 6,
-      email: 'hr@nhi.sg',
-      fullname: 'HR Nhi Le Team',
-      teams: '',
-      role: 'owner'
-    },
-    {
-      id: 10,
-      email: 'nhileteamweb@gmail.com',
-      fullname: 'Website',
-      teams: '',
-      role: 'admin'
-    },
-    {
-      id: 9,
-      email: 'lehuynhanhtai@gmail.com',
-      fullname: 'le huynh anh tai',
-      teams: '',
-      role: 'admin'
-    }
-  ]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Thêm states mới để lưu trữ danh sách teams và roles
   const [teams, setTeams] = useState<Team[]>([
@@ -138,7 +99,7 @@ const Accounts = ({ language }: AccountsProps) => {
       create: "Create",
       id: "ID",
       email: "Email",
-      fullname: "Fullname",
+      fullname: "Full Name",
       teams: "Teams",
       role: "Role",
       actions: "Actions",
@@ -174,9 +135,57 @@ const Accounts = ({ language }: AccountsProps) => {
 
   const t = translations[language];
 
+  const fetchAccounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setAccounts(data || []);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching accounts:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to fetch accounts' : 'Không thể tải danh sách tài khoản',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Fetch accounts data from Supabase
+  useEffect(() => {
+    fetchAccounts();
+    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('users_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'users' 
+        }, 
+        (payload) => {
+          console.log('Real-time update:', payload);
+          fetchAccounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   // Filter accounts based on search query
   const filteredAccounts = accounts.filter(account => 
-    account.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    account.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     account.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -198,42 +207,38 @@ const Accounts = ({ language }: AccountsProps) => {
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Generate a new unique ID (in a real app, this would come from the backend)
-      const newId = Math.max(...accounts.map(a => a.id), 0) + 1;
-      
-      // Create the new account object
-      const createdAccount: Account = {
-        ...newAccount,
-        id: newId
-      };
+      const timestamp = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          ...newAccount,
+          id: crypto.randomUUID(),
+          created_at: timestamp,
+          updated_at: timestamp
+        })
+        .select()
+        .single();
 
-      // Update the accounts list
-      setAccounts(prevAccounts => [...prevAccounts, createdAccount]);
-      
-      // Show success toast
-      toast({
-        title: language === 'en' ? "Account created" : "Tạo tài khoản thành công",
-        description: language === 'en' ? 
-          "The account has been created successfully" : 
-          "Tài khoản đã được tạo thành công",
-      });
+      if (error) throw error;
 
+      setAccounts(prev => [data, ...prev]);
       setIsCreateDialogOpen(false);
-      // Reset form
       setNewAccount({
         email: '',
-        fullname: '',
-        teams: '',
+        full_name: '',
         role: 'user'
       });
-    } catch (error) {
-      // Show error toast
+
       toast({
-        variant: "destructive",
-        title: language === 'en' ? "Error" : "Lỗi",
-        description: language === 'en' ? 
-          "Failed to create account. Please try again." : 
-          "Không thể tạo tài khoản. Vui lòng thử lại.",
+        title: language === 'en' ? 'Success' : 'Thành công',
+        description: language === 'en' ? 'Account created successfully' : 'Tạo tài khoản thành công',
+      });
+    } catch (error) {
+      console.error('Error creating account:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to create account' : 'Không thể tạo tài khoản',
+        variant: 'destructive',
       });
     }
   };
@@ -248,31 +253,32 @@ const Accounts = ({ language }: AccountsProps) => {
     if (!editingAccount) return;
 
     try {
-      // Update the account in the accounts list
-      setAccounts(prevAccounts => 
-        prevAccounts.map(account => 
-          account.id === editingAccount.id ? editingAccount : account
-        )
-      );
-      
-      // Show success toast
-      toast({
-        title: language === 'en' ? "Account updated" : "Cập nhật tài khoản thành công",
-        description: language === 'en' ? 
-          "The account has been updated successfully" : 
-          "Tài khoản đã được cập nhật thành công",
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({
+          email: editingAccount.email,
+          full_name: editingAccount.full_name,
+          role: editingAccount.role,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingAccount.id);
+
+      if (error) throw error;
 
       setIsEditDialogOpen(false);
-      setEditingAccount(null);
-    } catch (error) {
-      // Show error toast
       toast({
-        variant: "destructive",
-        title: language === 'en' ? "Error" : "Lỗi",
-        description: language === 'en' ? 
-          "Failed to update account. Please try again." : 
-          "Không thể cập nhật tài khoản. Vui lòng thử lại.",
+        title: language === 'en' ? 'Success' : 'Thành công',
+        description: language === 'en' ? 'Account updated successfully' : 'Cập nhật tài khoản thành công',
+      });
+      
+      // Refresh the accounts list
+      fetchAccounts();
+    } catch (error) {
+      console.error('Error updating account:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to update account' : 'Không thể cập nhật tài khoản',
+        variant: 'destructive',
       });
     }
   };
@@ -301,29 +307,27 @@ const Accounts = ({ language }: AccountsProps) => {
     if (!deletingAccount) return;
 
     try {
-      // Remove the account from the accounts list
-      setAccounts(prevAccounts => 
-        prevAccounts.filter(account => account.id !== deletingAccount.id)
-      );
-      
-      // Show success toast
-      toast({
-        title: language === 'en' ? "Account deleted" : "Xóa tài khoản thành công",
-        description: language === 'en' ? 
-          "The account has been deleted successfully" : 
-          "Tài khoản đã được xóa thành công",
-      });
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', deletingAccount.id);
 
+      if (error) throw error;
+
+      setAccounts(accounts.filter(account => account.id !== deletingAccount.id));
       setIsDeleteDialogOpen(false);
       setDeletingAccount(null);
-    } catch (error) {
-      // Show error toast
+
       toast({
-        variant: "destructive",
-        title: language === 'en' ? "Error" : "Lỗi",
-        description: language === 'en' ? 
-          "Failed to delete account. Please try again." : 
-          "Không thể xóa tài khoản. Vui lòng thử lại.",
+        title: language === 'en' ? 'Success' : 'Thành công',
+        description: language === 'en' ? 'Account deleted successfully' : 'Xóa tài khoản thành công',
+      });
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to delete account' : 'Không thể xóa tài khoản',
+        variant: 'destructive',
       });
     }
   };
@@ -363,33 +367,15 @@ const Accounts = ({ language }: AccountsProps) => {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="fullname" className="text-right">{t.fullname}</Label>
+                    <Label htmlFor="full_name" className="text-right">{t.fullname}</Label>
                     <Input
-                      id="fullname"
-                      name="fullname"
-                      value={newAccount.fullname}
+                      id="full_name"
+                      name="full_name"
+                      value={newAccount.full_name}
                       onChange={handleInputChange}
                       className="col-span-3"
                       required
                     />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="teams" className="text-right">{t.teams}</Label>
-                    <Select
-                      value={newAccount.teams}
-                      onValueChange={(value) => handleSelectChange(value, 'teams')}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder={t.selectTeam} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
-                            {team.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="role" className="text-right">{t.role}</Label>
@@ -402,7 +388,7 @@ const Accounts = ({ language }: AccountsProps) => {
                       </SelectTrigger>
                       <SelectContent>
                         {roles.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
+                          <SelectItem key={role.id} value={role.name}>
                             {role.name}
                           </SelectItem>
                         ))}
@@ -445,33 +431,15 @@ const Accounts = ({ language }: AccountsProps) => {
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-fullname" className="text-right">{t.fullname}</Label>
+                <Label htmlFor="edit-full_name" className="text-right">{t.fullname}</Label>
                 <Input
-                  id="edit-fullname"
-                  name="fullname"
-                  value={editingAccount?.fullname || ''}
+                  id="edit-full_name"
+                  name="full_name"
+                  value={editingAccount?.full_name || ''}
                   onChange={handleEditInputChange}
                   className="col-span-3"
                   required
                 />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-teams" className="text-right">{t.teams}</Label>
-                <Select
-                  value={editingAccount?.teams || ''}
-                  onValueChange={(value) => handleEditSelectChange(value, 'teams')}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder={t.selectTeam} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teams.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-role" className="text-right">{t.role}</Label>
@@ -484,7 +452,7 @@ const Accounts = ({ language }: AccountsProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {roles.map((role) => (
-                      <SelectItem key={role.id} value={role.id}>
+                      <SelectItem key={role.id} value={role.name}>
                         {role.name}
                       </SelectItem>
                     ))}
@@ -535,39 +503,51 @@ const Accounts = ({ language }: AccountsProps) => {
               <TableHead>{t.id}</TableHead>
               <TableHead>{t.email}</TableHead>
               <TableHead>{t.fullname}</TableHead>
-              <TableHead>{t.teams}</TableHead>
               <TableHead>{t.role}</TableHead>
               <TableHead>{t.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAccounts.map((account) => (
-              <TableRow key={account.id}>
-                <TableCell>{account.id}</TableCell>
-                <TableCell>{account.email}</TableCell>
-                <TableCell>{account.fullname}</TableCell>
-                <TableCell>{account.teams}</TableCell>
-                <TableCell>{account.role}</TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleEditClick(account)}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleDeleteClick(account)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-4">
+                  {language === 'en' ? "Loading..." : "Đang tải..."}
                 </TableCell>
               </TableRow>
-            ))}
+            ) : filteredAccounts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-4">
+                  {language === 'en' ? "No accounts found" : "Không tìm thấy tài khoản nào"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredAccounts.map((account) => (
+                <TableRow key={account.id}>
+                  <TableCell>{account.id}</TableCell>
+                  <TableCell>{account.email}</TableCell>
+                  <TableCell>{account.full_name}</TableCell>
+                  <TableCell>{account.role}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEditClick(account)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteClick(account)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
