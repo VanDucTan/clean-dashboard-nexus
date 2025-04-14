@@ -12,18 +12,26 @@ const LogoutButton = ({ language = 'vi' }: LogoutButtonProps) => {
   const { toast } = useToast();
   const { logout } = useAuth();
 
-  const handleLogout = () => {
-    // Logout using AuthContext
-    logout();
-    
-    // Show success message
-    toast({
-      title: language === 'en' ? "Logged out successfully" : "Đã đăng xuất",
-      description: language === 'en' ? "Redirecting to login..." : "Đang chuyển hướng đến trang đăng nhập...",
-    });
-    
-    // Redirect to login page
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      // Logout using AuthContext
+      await logout();
+      
+      // Show success message
+      toast({
+        title: language === 'en' ? "Logged out successfully" : "Đã đăng xuất",
+        description: language === 'en' ? "Redirecting to login..." : "Đang chuyển hướng đến trang đăng nhập...",
+      });
+      
+      // Redirect to login page
+      navigate("/login");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: language === 'en' ? "Logout failed" : "Đăng xuất thất bại",
+        description: error instanceof Error ? error.message : "Đã có lỗi xảy ra",
+      });
+    }
   };
 
   return (
