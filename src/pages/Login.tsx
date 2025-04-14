@@ -64,23 +64,21 @@ const Login = () => {
       }
       
       // Login using Supabase
-      const { error, success } = await login(formData.email, formData.password);
+      const { error } = await login(formData.email, formData.password);
       
       if (error) {
         setPasswordError("Mật khẩu bạn đã nhập không chính xác. Hãy kiểm tra lại");
         return;
       }
 
-      if (success) {
-        // Show success message
-        toast({
-          title: "Đăng nhập thành công",
-          description: "Đang chuyển hướng đến trang chủ...",
-        });
-        
-        // Redirect to dashboard
-        navigate("/");
-      }
+      // Show success message
+      toast({
+        title: "Đăng nhập thành công",
+        description: "Đang chuyển hướng đến trang chủ...",
+      });
+      
+      // Redirect to dashboard
+      navigate("/");
       
     } catch (error) {
       toast({
