@@ -1,12 +1,14 @@
-
 import React from "react";
 import { Users } from "lucide-react";
+import { useAccounts } from '@/contexts/AccountContext';
 
 interface DashboardProps {
   language: 'en' | 'vi';
 }
 
 const Dashboard = ({ language }: DashboardProps) => {
+  const { totalAccounts } = useAccounts();
+
   const translations = {
     en: {
       dashboard: "Dashboard",
@@ -28,7 +30,7 @@ const Dashboard = ({ language }: DashboardProps) => {
         <div className="flex justify-between items-start">
           <div>
             <p className="text-sm text-muted-foreground">{t.totalMembers}</p>
-            <h2 className="text-3xl font-bold mt-1">0</h2>
+            <h2 className="text-3xl font-bold mt-1">{totalAccounts}</h2>
           </div>
           <div className="bg-primary/10 p-2 rounded-full">
             <Users size={20} className="text-primary" />

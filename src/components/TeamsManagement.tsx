@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PlusCircle, Search, Edit, Trash2 } from "lucide-react";
+import { createClient } from '@supabase/supabase-js';
 import {
   Table,
   TableHeader,
@@ -42,54 +43,33 @@ import {
 import CustomPagination from "@/components/ui/custom-pagination";
 import { format } from "date-fns";
 
+// Supabase client initialization with Vite environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Define interfaces
 interface Team {
   id: string;
   name: string;
-  description: string;
-  createdAt: Date;
-  trainingGroup: string;
-  isRecruiting: boolean;
-  deviceWorking: string[];
-  quantityOfPositions: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  training_group: string | null;
+  is_recruiting: boolean;
+  device_working: string[];
+  quantity_of_positions: number;
 }
 
 // Sample device options
 const deviceOptions = ["laptop", "mobile"];
 
-// Sample data
-const sampleTeams: Team[] = [
-  {
-    id: "1",
-    name: "Development Team",
-    description: "Main software development team",
-    createdAt: new Date(2023, 3, 15),
-    trainingGroup: "https://t.me/dev_training",
-    isRecruiting: true,
-    deviceWorking: ["laptop", "mobile"],
-    quantityOfPositions: 5
-  },
-  {
-    id: "2",
-    name: "Design Team",
-    description: "UI/UX design team",
-    createdAt: new Date(2023, 5, 22),
-    trainingGroup: "https://t.me/design_group",
-    isRecruiting: false,
-    deviceWorking: ["laptop"],
-    quantityOfPositions: 0
-  },
-  {
-    id: "3",
-    name: "Marketing Team",
-    description: "Marketing and PR team",
-    createdAt: new Date(2023, 8, 5),
-    trainingGroup: "https://t.me/marketing_group",
-    isRecruiting: true,
-    deviceWorking: ["laptop", "mobile"],
-    quantityOfPositions: 3
-  },
-];
+// Remove sampleTeams as we'll fetch from Supabase
 
 interface TeamsManagementProps {
   language: 'en' | 'vi';
@@ -98,7 +78,8 @@ interface TeamsManagementProps {
 const TeamsManagement = ({ language }: TeamsManagementProps) => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [teams, setTeams] = useState<Team[]>(sampleTeams);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -107,21 +88,57 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Form data
-  const [formData, setFormData] = useState<{
+  // Fetch teams from Supabase
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+
+  const fetchTeams = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching teams...');
+      
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching teams:', error);
+        throw error;
+      }
+
+      console.log('Fetched teams:', data);
+      setTeams(data || []);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      toast({
+        title: language === 'en' ? 'Error loading teams' : 'Lỗi tải danh sách nhóm',
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Form data interface to match Supabase schema
+  interface TeamFormData {
     name: string;
     description: string;
-    trainingGroup: string;
-    isRecruiting: boolean;
-    deviceWorking: string[];
-    quantityOfPositions: number;
-  }>({
+    training_group: string;
+    is_recruiting: boolean;
+    device_working: string[];
+    quantity_of_positions: number;
+  }
+
+  // Update form data state to match new interface
+  const [formData, setFormData] = useState<TeamFormData>({
     name: "",
     description: "",
-    trainingGroup: "",
-    isRecruiting: false,
-    deviceWorking: [],
-    quantityOfPositions: 0
+    training_group: "",
+    is_recruiting: false,
+    device_working: [],
+    quantity_of_positions: 0
   });
 
   // Translations
@@ -154,6 +171,9 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
       trainingGroupRequired: "Training Group link is required",
       trainingGroupInvalid: "Training Group must be a valid URL",
       quantityInvalid: "Quantity must be 0 or greater",
+      showing: "Showing",
+      of: "of",
+      perPage: "per page",
     },
     vi: {
       title: "Quản lý nhóm",
@@ -183,6 +203,9 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
       trainingGroupRequired: "Liên kết nhóm đào tạo là bắt buộc",
       trainingGroupInvalid: "Nhóm đào tạo phải là URL hợp lệ",
       quantityInvalid: "Số lượng phải là 0 hoặc lớn hơn",
+      showing: "Hiển thị",
+      of: "trong số",
+      perPage: "mỗi trang",
     }
   };
 
@@ -193,20 +216,20 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
       setFormData({
         name: team.name,
         description: team.description || "",
-        trainingGroup: team.trainingGroup,
-        isRecruiting: team.isRecruiting,
-        deviceWorking: [...team.deviceWorking],
-        quantityOfPositions: team.quantityOfPositions
+        training_group: team.training_group || "",
+        is_recruiting: team.is_recruiting,
+        device_working: [...team.device_working],
+        quantity_of_positions: team.quantity_of_positions
       });
     } else {
       setEditingTeam(null);
       setFormData({
         name: "",
         description: "",
-        trainingGroup: "",
-        isRecruiting: false,
-        deviceWorking: [],
-        quantityOfPositions: 0
+        training_group: "",
+        is_recruiting: false,
+        device_working: [],
+        quantity_of_positions: 0
       });
     }
     setFormErrors({});
@@ -219,97 +242,13 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
     setIsDeleteDialogOpen(true);
   };
 
-  // Validate form data
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    
-    if (!formData.name.trim()) {
-      errors.name = t[language].nameRequired;
-    }
-    
-    if (!formData.trainingGroup.trim()) {
-      errors.trainingGroup = t[language].trainingGroupRequired;
-    } else {
-      try {
-        // Simple URL validation
-        new URL(formData.trainingGroup);
-      } catch (e) {
-        errors.trainingGroup = t[language].trainingGroupInvalid;
-      }
-    }
-    
-    if (formData.quantityOfPositions < 0) {
-      errors.quantityOfPositions = t[language].quantityInvalid;
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle save team
-  const handleSaveTeam = () => {
-    if (!validateForm()) {
-      return;
-    }
-    
-    if (editingTeam) {
-      // Update existing team
-      setTeams(teams.map(team => 
-        team.id === editingTeam.id 
-          ? { 
-              ...team, 
-              name: formData.name,
-              description: formData.description,
-              trainingGroup: formData.trainingGroup,
-              isRecruiting: formData.isRecruiting,
-              deviceWorking: [...formData.deviceWorking],
-              quantityOfPositions: formData.quantityOfPositions
-            } 
-          : team
-      ));
-      toast({
-        title: t[language].teamUpdated,
-      });
-    } else {
-      // Add new team
-      const newTeam: Team = {
-        id: String(Date.now()),
-        name: formData.name,
-        description: formData.description,
-        createdAt: new Date(),
-        trainingGroup: formData.trainingGroup,
-        isRecruiting: formData.isRecruiting,
-        deviceWorking: [...formData.deviceWorking],
-        quantityOfPositions: formData.quantityOfPositions
-      };
-      setTeams([...teams, newTeam]);
-      toast({
-        title: t[language].teamAdded,
-      });
-    }
-    
-    setIsAddDialogOpen(false);
-  };
-
-  // Handle delete team
-  const handleDeleteTeam = () => {
-    if (selectedTeamId) {
-      setTeams(teams.filter(team => team.id !== selectedTeamId));
-      toast({
-        title: t[language].teamDeleted,
-      });
-    }
-    setIsDeleteDialogOpen(false);
-    setSelectedTeamId(null);
-  };
-
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
     setFormData(prev => ({
       ...prev,
-      [name]: name === "quantityOfPositions" ? parseInt(value) || 0 : value
+      [name]: name === "quantity_of_positions" ? parseInt(value) || 0 : value
     }));
     
     // Clear error for this field if it exists
@@ -326,33 +265,162 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
   const handleCheckboxChange = (checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      isRecruiting: checked
+      is_recruiting: checked
     }));
   };
 
   // Handle device selection
   const handleDeviceSelectionChange = (device: string) => {
     setFormData(prev => {
-      const deviceIndex = prev.deviceWorking.indexOf(device);
+      const deviceIndex = prev.device_working.indexOf(device);
       
       if (deviceIndex === -1) {
         return {
           ...prev,
-          deviceWorking: [...prev.deviceWorking, device]
+          device_working: [...prev.device_working, device]
         };
       } else {
         return {
           ...prev,
-          deviceWorking: prev.deviceWorking.filter(d => d !== device)
+          device_working: prev.device_working.filter(d => d !== device)
         };
       }
     });
   };
 
+  // Validate form data
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = t[language].nameRequired;
+    }
+    
+    if (!formData.training_group.trim()) {
+      errors.training_group = t[language].trainingGroupRequired;
+    } else {
+      try {
+        // Simple URL validation
+        new URL(formData.training_group);
+      } catch (e) {
+        errors.training_group = t[language].trainingGroupInvalid;
+      }
+    }
+    
+    if (formData.quantity_of_positions < 0) {
+      errors.quantity_of_positions = t[language].quantityInvalid;
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle save team with Supabase
+  const handleSaveTeam = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      console.log('Saving team...', formData);
+      
+      if (editingTeam) {
+        // Update existing team
+        const { error } = await supabase
+          .from('teams')
+          .update({
+            name: formData.name,
+            description: formData.description,
+            training_group: formData.training_group,
+            is_recruiting: formData.is_recruiting,
+            device_working: formData.device_working,
+            quantity_of_positions: formData.quantity_of_positions,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingTeam.id);
+
+        if (error) {
+          console.error('Error updating team:', error);
+          throw error;
+        }
+
+        console.log('Team updated successfully');
+        toast({
+          title: t[language].teamUpdated,
+        });
+      } else {
+        // Add new team
+        const { error } = await supabase
+          .from('teams')
+          .insert([{
+            name: formData.name,
+            description: formData.description,
+            training_group: formData.training_group,
+            is_recruiting: formData.is_recruiting,
+            device_working: formData.device_working,
+            quantity_of_positions: formData.quantity_of_positions
+          }]);
+
+        if (error) {
+          console.error('Error creating team:', error);
+          throw error;
+        }
+
+        console.log('Team created successfully');
+        toast({
+          title: t[language].teamAdded,
+        });
+      }
+
+      // Refresh teams list
+      await fetchTeams();
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving team:', error);
+      toast({
+        title: language === 'en' ? 'Error saving team' : 'Lỗi lưu nhóm',
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle delete team with Supabase
+  const handleDeleteTeam = async () => {
+    if (selectedTeamId) {
+      try {
+        console.log('Deleting team:', selectedTeamId);
+        
+        const { error } = await supabase
+          .from('teams')
+          .delete()
+          .eq('id', selectedTeamId);
+
+        if (error) {
+          console.error('Error deleting team:', error);
+          throw error;
+        }
+
+        console.log('Team deleted successfully');
+        toast({
+          title: t[language].teamDeleted,
+        });
+        await fetchTeams();
+      } catch (error) {
+        console.error('Error deleting team:', error);
+        toast({
+          title: language === 'en' ? 'Error deleting team' : 'Lỗi xóa nhóm',
+          variant: "destructive",
+        });
+      }
+    }
+    setIsDeleteDialogOpen(false);
+    setSelectedTeamId(null);
+  };
+
   // Filter teams based on search query
   const filteredTeams = teams.filter(team => 
     team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    team.description.toLowerCase().includes(searchQuery.toLowerCase())
+    team.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Pagination
@@ -399,11 +467,17 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentTeams.length > 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-4">
+                    {language === 'en' ? 'Loading teams...' : 'Đang tải danh sách nhóm...'}
+                  </TableCell>
+                </TableRow>
+              ) : currentTeams.length > 0 ? (
                 currentTeams.map((team) => (
                   <TableRow key={team.id}>
                     <TableCell>
-                      {format(team.createdAt, "MMM d, yyyy")}
+                      {format(new Date(team.created_at), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="font-medium">{team.name}</TableCell>
                     <TableCell className="hidden md:table-cell max-w-[300px] truncate">
@@ -411,20 +485,20 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
                     </TableCell>
                     <TableCell>
                       <a 
-                        href={team.trainingGroup} 
+                        href={team.training_group} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-blue-500 hover:underline"
                       >
-                        {team.trainingGroup.replace(/^https?:\/\/(www\.)?/i, '')}
+                        {team.training_group?.replace(/^https?:\/\/(www\.)?/i, '')}
                       </a>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Checkbox checked={team.isRecruiting} disabled />
+                      <Checkbox checked={team.is_recruiting} disabled />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {team.deviceWorking.map((device) => (
+                        {team.device_working.map((device) => (
                           <Badge key={device} variant="outline">
                             {device}
                           </Badge>
@@ -432,7 +506,7 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {team.quantityOfPositions}
+                      {team.quantity_of_positions}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -465,19 +539,45 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
           </Table>
         </div>
 
-        <CustomPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setCurrentPage}
-          onRowsPerPageChange={(value) => {
-            setRowsPerPage(value);
-            setCurrentPage(1);
-          }}
-          translations={{
-            rowsPerPage: t[language].rowsPerPage
-          }}
-        />
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Select
+              value={rowsPerPage.toString()}
+              onValueChange={(value) => {
+                setRowsPerPage(parseInt(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={pageSize.toString()}>
+                    {pageSize} {t[language].perPage}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">
+              {t[language].showing} {((currentPage - 1) * rowsPerPage) + 1}-
+              {Math.min(currentPage * rowsPerPage, filteredTeams.length)} {t[language].of}{" "}
+              {filteredTeams.length}
+            </span>
+          </div>
+          <CustomPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowsPerPageChange={setRowsPerPage}
+            translations={{
+              showing: t[language].showing,
+              of: t[language].of,
+              perPage: t[language].perPage
+            }}
+          />
+        </div>
       </div>
 
       {/* Add/Edit Team Dialog */}
@@ -525,21 +625,21 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
               </Label>
               <Input
                 id="trainingGroup"
-                name="trainingGroup"
+                name="training_group"
                 placeholder="https://t.me/example"
-                value={formData.trainingGroup}
+                value={formData.training_group}
                 onChange={handleInputChange}
-                className={formErrors.trainingGroup ? "border-red-500" : ""}
+                className={formErrors.training_group ? "border-red-500" : ""}
               />
-              {formErrors.trainingGroup && (
-                <p className="text-red-500 text-sm">{formErrors.trainingGroup}</p>
+              {formErrors.training_group && (
+                <p className="text-red-500 text-sm">{formErrors.training_group}</p>
               )}
             </div>
             
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="isRecruiting"
-                checked={formData.isRecruiting}
+                checked={formData.is_recruiting}
                 onCheckedChange={handleCheckboxChange}
               />
               <Label htmlFor="isRecruiting">{t[language].isRecruiting}</Label>
@@ -552,7 +652,7 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
                   <div key={device} className="flex items-center space-x-2">
                     <Checkbox
                       id={`device-${device}`}
-                      checked={formData.deviceWorking.includes(device)}
+                      checked={formData.device_working.includes(device)}
                       onCheckedChange={() => handleDeviceSelectionChange(device)}
                     />
                     <Label htmlFor={`device-${device}`}>{device}</Label>
@@ -567,15 +667,15 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
               </Label>
               <Input
                 id="quantityOfPositions"
-                name="quantityOfPositions"
+                name="quantity_of_positions"
                 type="number"
                 min="0"
-                value={formData.quantityOfPositions}
+                value={formData.quantity_of_positions}
                 onChange={handleInputChange}
-                className={formErrors.quantityOfPositions ? "border-red-500" : ""}
+                className={formErrors.quantity_of_positions ? "border-red-500" : ""}
               />
-              {formErrors.quantityOfPositions && (
-                <p className="text-red-500 text-sm">{formErrors.quantityOfPositions}</p>
+              {formErrors.quantity_of_positions && (
+                <p className="text-red-500 text-sm">{formErrors.quantity_of_positions}</p>
               )}
             </div>
           </div>

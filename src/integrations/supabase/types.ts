@@ -6,116 +6,98 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
-      roles: {
+      users: {
         Row: {
-          created_at: string | null
-          description: string | null
           id: string
-          name: string
-          updated_at: string | null
+          email: string
+          username: string
+          full_name: string
+          team_id: string
+          role_id: string
+          last_login: string | null
+          last_logout: string | null
+          status: 'active' | 'inactive'
+          created_at: string
+          updated_at: string
+          avatar_url: string | null
         }
         Insert: {
-          created_at?: string | null
-          description?: string | null
           id?: string
-          name: string
-          updated_at?: string | null
+          email: string
+          username?: string
+          full_name?: string
+          team_id?: string
+          role_id?: string
+          last_login?: string | null
+          last_logout?: string | null
+          status?: 'active' | 'inactive'
+          created_at?: string
+          updated_at?: string
+          avatar_url?: string | null
         }
         Update: {
-          created_at?: string | null
-          description?: string | null
           id?: string
-          name?: string
-          updated_at?: string | null
+          email?: string
+          username?: string
+          full_name?: string
+          team_id?: string
+          role_id?: string
+          last_login?: string | null
+          last_logout?: string | null
+          status?: 'active' | 'inactive'
+          created_at?: string
+          updated_at?: string
+          avatar_url?: string | null
         }
-        Relationships: []
       }
       teams: {
         Row: {
-          created_at: string | null
+          id: string
+          name: string
           description: string | null
-          id: string
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      users: {
-        Row: {
-          avatar_url: string | null
           created_at: string
-          email: string
-          full_name: string | null
-          id: string
-          password: string | null
-          role: string | null
           updated_at: string
         }
         Insert: {
-          avatar_url?: string | null
+          id?: string
+          name: string
+          description?: string | null
           created_at?: string
-          email: string
-          full_name?: string | null
-          id: string
-          password?: string | null
-          role?: string | null
           updated_at?: string
         }
         Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          full_name?: string | null
           id?: string
-          password?: string | null
-          role?: string | null
+          name?: string
+          description?: string | null
+          created_at?: string
           updated_at?: string
         }
-        Relationships: []
       }
-      verification_codes: {
+      roles: {
         Row: {
-          code: string
-          created_at: string | null
-          email: string
-          expires_at: string
-          id: number
-          used: boolean | null
+          id: string
+          name: string
+          description: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          code: string
-          created_at?: string | null
-          email: string
-          expires_at: string
-          id?: never
-          used?: boolean | null
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          code?: string
-          created_at?: string | null
-          email?: string
-          expires_at?: string
-          id?: never
-          used?: boolean | null
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+          updated_at?: string
         }
-        Relationships: []
       }
     }
     Views: {
