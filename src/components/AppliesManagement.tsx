@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, Edit2, Plus, Download, Upload, Check } from "lucide-react";
 import {
   Table,
@@ -31,6 +31,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
 import CustomPagination from "@/components/ui/custom-pagination";
+import { createClient } from '@supabase/supabase-js';
 
 interface AppliesManagementProps {
   language: 'en' | 'vi';
@@ -38,23 +39,26 @@ interface AppliesManagementProps {
 
 interface Apply {
   id: number;
-  dateApply: string;
   email: string;
   fullname: string;
-  infoSecurity: boolean;
   phone: string;
-  dateOfBirth: string;
-  timeOfBirth: string;
-  placeOfBirth: string;
-  deviceWorking: string[];
-  telegram: string;
-  facebook: string;
-  positionApply: string;
-  sun: string;
-  moon: string;
-  asc: string;
-  currentAddress: string;
+  date_of_birth: string;
+  time_of_birth: string;
+  place_of_birth: string;
+  telegram_username: string;
+  facebook_link: string;
+  position_apply: string;
+  sun_sign: string;
+  moon_sign: string;
+  asc_sign: string;
+  current_address: string;
 }
+
+// Initialize Supabase client
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 // Mock data for demonstration
 const mockApplies = [
@@ -104,17 +108,47 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
   const [isWebhookDialogOpen, setIsWebhookDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingApply, setEditingApply] = useState<Apply | null>(null);
-  const [applies, setApplies] = useState<Apply[]>(mockApplies);
+  const [applies, setApplies] = useState<Apply[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Fetch applies from Supabase
+  const fetchApplies = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('applies')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) throw error;
+
+      setApplies(data || []);
+    } catch (error) {
+      console.error('Error fetching applies:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to fetch applies' : 'Không thể tải dữ liệu',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchApplies();
+  }, []);
 
   // Handle search
   const filteredApplies = applies.filter(apply => 
     apply.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     apply.fullname.toLowerCase().includes(searchQuery.toLowerCase()) ||
     apply.phone.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    apply.telegram.toLowerCase().includes(searchQuery.toLowerCase())
+    apply.telegram_username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Handle import
@@ -124,23 +158,31 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const content = e.target?.result as string;
           const importedData = JSON.parse(content);
-          setApplies([...applies, ...importedData]);
+          
+          const { error } = await supabase
+            .from('applies')
+            .insert(importedData);
+
+          if (error) throw error;
+
+          await fetchApplies();
           toast({
             title: language === 'en' ? 'Success' : 'Thành công',
             description: language === 'en' ? 'Data imported successfully' : 'Nhập dữ liệu thành công',
           });
         } catch (error) {
+          console.error('Error importing data:', error);
           toast({
             title: language === 'en' ? 'Error' : 'Lỗi',
-            description: language === 'en' ? 'Invalid file format' : 'Định dạng file không hợp lệ',
+            description: language === 'en' ? 'Failed to import data' : 'Không thể nhập dữ liệu',
             variant: 'destructive',
           });
         }
@@ -150,17 +192,33 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
   };
 
   // Handle export
-  const handleExport = () => {
-    const exportData = JSON.stringify(applies, null, 2);
-    const blob = new Blob([exportData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `applies_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('applies')
+        .select('*')
+        .order('dateApply', { ascending: false });
+
+      if (error) throw error;
+
+      const exportData = JSON.stringify(data, null, 2);
+      const blob = new Blob([exportData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `applies_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to export data' : 'Không thể xuất dữ liệu',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Handle edit
@@ -169,17 +227,46 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingApply) {
-      setApplies(applies.map(apply => 
-        apply.id === editingApply.id ? editingApply : apply
-      ));
-      setIsEditDialogOpen(false);
-      setEditingApply(null);
-      toast({
-        title: language === 'en' ? 'Success' : 'Thành công',
-        description: language === 'en' ? 'Apply updated successfully' : 'Cập nhật thành công',
-      });
+      try {
+        const { error } = await supabase
+          .from('applies')
+          .update({
+            email: editingApply.email,
+            fullname: editingApply.fullname,
+            phone: editingApply.phone,
+            date_of_birth: editingApply.date_of_birth,
+            time_of_birth: editingApply.time_of_birth,
+            place_of_birth: editingApply.place_of_birth,
+            telegram_username: editingApply.telegram_username,
+            facebook_link: editingApply.facebook_link,
+            position_apply: editingApply.position_apply,
+            sun_sign: editingApply.sun_sign,
+            moon_sign: editingApply.moon_sign,
+            asc_sign: editingApply.asc_sign,
+            current_address: editingApply.current_address,
+          })
+          .eq('id', editingApply.id);
+
+        if (error) throw error;
+
+        await fetchApplies();
+        setIsEditDialogOpen(false);
+        setEditingApply(null);
+        
+        toast({
+          title: language === 'en' ? 'Success' : 'Thành công',
+          description: language === 'en' ? 'Apply updated successfully' : 'Cập nhật thành công',
+        });
+      } catch (error) {
+        console.error('Error updating apply:', error);
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Failed to update apply' : 'Không thể cập nhật',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -188,6 +275,27 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
   const indexOfFirstApply = indexOfLastApply - rowsPerPage;
   const paginatedApplies = filteredApplies.slice(indexOfFirstApply, indexOfLastApply);
   const totalPages = Math.ceil(filteredApplies.length / rowsPerPage);
+
+  // Real-time subscription
+  useEffect(() => {
+    const subscription = supabase
+      .channel('applies_changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'applies' 
+        }, 
+        () => {
+          fetchApplies();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Translations
   const t = {
@@ -336,15 +444,12 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">{t[language].dateApply}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].email}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].fullname}</TableHead>
-                <TableHead className="whitespace-nowrap text-center">{t[language].infoSecurity}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].phone}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].dateOfBirth}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].timeOfBirth}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].placeOfBirth}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].deviceWorking}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].telegram}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].facebook}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].positionApply}</TableHead>
@@ -356,63 +461,70 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedApplies.map((apply) => (
-                <TableRow key={apply.id}>
-                  <TableCell className="whitespace-nowrap">{apply.dateApply}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{apply.email}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{apply.fullname}</TableCell>
-                  <TableCell className="text-center whitespace-nowrap">
-                    {apply.infoSecurity && (
-                      <div className="flex justify-center">
-                        <Check className="h-4 w-4 text-green-500" />
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{apply.phone}</TableCell>
-                  <TableCell className="whitespace-nowrap">{apply.dateOfBirth}</TableCell>
-                  <TableCell className="whitespace-nowrap">{apply.timeOfBirth}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{apply.placeOfBirth}</TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <div className="flex gap-1">
-                      {apply.deviceWorking.map((device, index) => (
-                        <Badge key={index} variant="outline">
-                          {device}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <a
-                      href={`https://t.me/${apply.telegram.substring(1)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      {apply.telegram}
-                    </a>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <a
-                      href={`https://facebook.com/${apply.facebook}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      {apply.facebook}
-                    </a>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{apply.positionApply}</TableCell>
-                  <TableCell className="whitespace-nowrap">{apply.sun}</TableCell>
-                  <TableCell className="whitespace-nowrap">{apply.moon}</TableCell>
-                  <TableCell className="whitespace-nowrap">{apply.asc}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{apply.currentAddress}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(apply)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={14} className="text-center py-10">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedApplies.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={14} className="text-center py-10">
+                    {language === 'en' ? 'No applications found' : 'Không tìm thấy đơn ứng tuyển nào'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedApplies.map((apply) => (
+                  <TableRow key={apply.id}>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {apply.email}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {apply.fullname}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{apply.phone}</TableCell>
+                    <TableCell className="whitespace-nowrap">{apply.date_of_birth}</TableCell>
+                    <TableCell className="whitespace-nowrap">{apply.time_of_birth}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {apply.place_of_birth}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <a
+                        href={`https://t.me/${apply.telegram_username.replace('@', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        {apply.telegram_username}
+                      </a>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <a
+                        href={apply.facebook_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        {apply.facebook_link}
+                      </a>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {apply.position_apply}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{apply.sun_sign}</TableCell>
+                    <TableCell className="whitespace-nowrap">{apply.moon_sign}</TableCell>
+                    <TableCell className="whitespace-nowrap">{apply.asc_sign}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {apply.current_address}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(apply)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -475,7 +587,7 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
                 <Input
                   id="email"
                   value={editingApply?.email || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, email: e.target.value })}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, email: e.target.value }))}
                 />
               </div>
 
@@ -486,7 +598,7 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
                 <Input
                   id="fullname"
                   value={editingApply?.fullname || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, fullname: e.target.value })}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, fullname: e.target.value }))}
                 />
               </div>
 
@@ -497,167 +609,119 @@ const AppliesManagement = ({ language }: AppliesManagementProps) => {
                 <Input
                   id="phone"
                   value={editingApply?.phone || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, phone: e.target.value })}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, phone: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="dateOfBirth">
+                <Label htmlFor="date_of_birth">
                   {t[language].dateOfBirth} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="dateOfBirth"
+                  id="date_of_birth"
                   type="date"
-                  value={editingApply?.dateOfBirth || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, dateOfBirth: e.target.value })}
+                  value={editingApply?.date_of_birth || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, date_of_birth: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="timeOfBirth">
+                <Label htmlFor="time_of_birth">
                   {t[language].timeOfBirth} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="timeOfBirth"
+                  id="time_of_birth"
                   type="time"
-                  value={editingApply?.timeOfBirth || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, timeOfBirth: e.target.value })}
+                  value={editingApply?.time_of_birth || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, time_of_birth: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="placeOfBirth">
+                <Label htmlFor="place_of_birth">
                   {t[language].placeOfBirth} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="placeOfBirth"
-                  value={editingApply?.placeOfBirth || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, placeOfBirth: e.target.value })}
+                  id="place_of_birth"
+                  value={editingApply?.place_of_birth || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, place_of_birth: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label>{t[language].deviceWorkingOptions}</Label>
-                <div className="flex flex-wrap gap-4">
-                  {['Laptop', 'Mobile', 'Desktop', 'Tablet'].map((device) => (
-                    <div key={device} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={device}
-                        checked={editingApply?.deviceWorking?.includes(device)}
-                        onCheckedChange={(checked) => {
-                          const devices = editingApply?.deviceWorking || [];
-                          setEditingApply({
-                            ...editingApply,
-                            deviceWorking: checked
-                              ? [...devices, device]
-                              : devices.filter((d: string) => d !== device),
-                          });
-                        }}
-                      />
-                      <Label htmlFor={device}>{t[language][device.toLowerCase()]}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="telegram">
+                <Label htmlFor="telegram_username">
                   {t[language].telegram} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="telegram"
-                  value={editingApply?.telegram || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, telegram: e.target.value })}
+                  id="telegram_username"
+                  value={editingApply?.telegram_username || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, telegram_username: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label>{t[language].infoSecurity}</Label>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="securityYes"
-                      checked={editingApply?.infoSecurity === true}
-                      onChange={() => setEditingApply({ ...editingApply, infoSecurity: true })}
-                    />
-                    <Label htmlFor="securityYes">{t[language].yes}</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="securityNo"
-                      checked={editingApply?.infoSecurity === false}
-                      onChange={() => setEditingApply({ ...editingApply, infoSecurity: false })}
-                    />
-                    <Label htmlFor="securityNo">{t[language].no}</Label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="facebook">
+                <Label htmlFor="facebook_link">
                   {t[language].facebook} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="facebook"
-                  value={editingApply?.facebook || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, facebook: e.target.value })}
+                  id="facebook_link"
+                  value={editingApply?.facebook_link || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, facebook_link: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="positionApply">
+                <Label htmlFor="position_apply">
                   {t[language].positionApply} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="positionApply"
-                  value={editingApply?.positionApply || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, positionApply: e.target.value })}
+                  id="position_apply"
+                  value={editingApply?.position_apply || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, position_apply: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="sun">
+                <Label htmlFor="sun_sign">
                   {t[language].sun} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="sun"
-                  value={editingApply?.sun || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, sun: e.target.value })}
+                  id="sun_sign"
+                  value={editingApply?.sun_sign || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, sun_sign: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="moon">
+                <Label htmlFor="moon_sign">
                   {t[language].moon} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="moon"
-                  value={editingApply?.moon || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, moon: e.target.value })}
+                  id="moon_sign"
+                  value={editingApply?.moon_sign || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, moon_sign: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="asc">
+                <Label htmlFor="asc_sign">
                   {t[language].asc} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="asc"
-                  value={editingApply?.asc || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, asc: e.target.value })}
+                  id="asc_sign"
+                  value={editingApply?.asc_sign || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, asc_sign: e.target.value }))}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="currentAddress">
+                <Label htmlFor="current_address">
                   {t[language].currentAddress} <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="currentAddress"
-                  value={editingApply?.currentAddress || ''}
-                  onChange={(e) => setEditingApply({ ...editingApply, currentAddress: e.target.value })}
+                  id="current_address"
+                  value={editingApply?.current_address || ''}
+                  onChange={(e) => setEditingApply(prev => ({ ...prev!, current_address: e.target.value }))}
                 />
               </div>
             </div>
