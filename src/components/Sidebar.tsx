@@ -18,7 +18,13 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronLeftSquare,
-  PanelLeft
+  PanelLeft,
+  UserCircle,
+  Users2,
+  FileSpreadsheet,
+  CalendarClock,
+  Scale,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LogoutDialog from "./LogoutDialog";
@@ -149,6 +155,57 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
   };
 
   const t = translations[language];
+
+  const items = [
+    {
+      id: "dashboard",
+      icon: LayoutDashboard,
+      titleEn: "Dashboard",
+      titleVi: "Trang chủ"
+    },
+    {
+      id: "accounts",
+      icon: Users,
+      titleEn: "Accounts",
+      titleVi: "Tài khoản"
+    },
+    {
+      id: "roles",
+      icon: UserCircle,
+      titleEn: "Roles",
+      titleVi: "Vai trò"
+    },
+    {
+      id: "teams",
+      icon: Users2,
+      titleEn: "Teams",
+      titleVi: "Nhóm"
+    },
+    {
+      id: "applies",
+      icon: FileSpreadsheet,
+      titleEn: "Applies",
+      titleVi: "Ứng tuyển"
+    },
+    {
+      id: "interview",
+      icon: CalendarClock,
+      titleEn: "Interview",
+      titleVi: "Phỏng vấn"
+    },
+    {
+      id: "rule-assessment",
+      icon: Scale,
+      titleEn: "Rule Assessment",
+      titleVi: "Đánh giá quy tắc"
+    },
+    {
+      id: "settings",
+      icon: Settings,
+      titleEn: "Settings",
+      titleVi: "Cài đặt"
+    }
+  ];
 
   return (
     <>

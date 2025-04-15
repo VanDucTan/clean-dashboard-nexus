@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Label } from "./ui/label";
-import { Edit2, Trash2, UserPlus } from "lucide-react";
+import { Edit2, Trash2, UserPlus, Search } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -488,123 +488,32 @@ const Accounts = ({ language }: AccountsProps) => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <Input
-          className="max-w-sm"
-          placeholder={t.searchPlaceholder}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <UserPlus className="w-4 h-4 mr-2" />
-              {t.createUser}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t.createAccount}</DialogTitle>
-              <DialogDescription>{t.enterDetails}</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateAccount}>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="username" className="text-right">{t.username}</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    value={newAccount.username}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    required
-                    placeholder="@username"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">{t.email}</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={newAccount.email}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">{t.password}</Label>
-                  <Input
-                    id="password"
-                    name="password_hash"
-                    type="password"
-                    value={newAccount.password_hash}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="full_name" className="text-right">{t.fullname}</Label>
-                  <Input
-                    id="full_name"
-                    name="full_name"
-                    value={newAccount.full_name}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="team_id" className="text-right">{t.teams}</Label>
-                  <Select
-                    value={newAccount.team_id || ''}
-                    onValueChange={(value) => handleSelectChange(value, 'team_id')}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={t.selectTeam} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teams.map((team) => (
-                        <SelectItem key={team.id} value={team.id}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role_id" className="text-right">{t.role}</Label>
-                  <Select
-                    value={newAccount.role_id || ''}
-                    onValueChange={(value) => handleSelectChange(value, 'role_id')}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder={t.selectRole} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)}>
-                  {t.cancel}
-                </Button>
-                <Button type="submit">{t.save}</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <h2 className="text-2xl font-bold">
+          {language === 'en' ? 'Accounts Management' : 'Quản lý tài khoản'}
+        </h2>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <UserPlus className="w-4 h-4 mr-2" />
+          {t.createUser}
+        </Button>
       </div>
 
+      {/* Search */}
+      {!isLoading && (
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t.searchPlaceholder}
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      )}
+
+      {/* Table */}
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -842,6 +751,109 @@ const Accounts = ({ language }: AccountsProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Account Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.createAccount}</DialogTitle>
+            <DialogDescription>{t.enterDetails}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateAccount}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="username" className="text-right">{t.username}</Label>
+                <Input
+                  id="username"
+                  name="username"
+                  value={newAccount.username}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                  placeholder="@username"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">{t.email}</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={newAccount.email}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">{t.password}</Label>
+                <Input
+                  id="password"
+                  name="password_hash"
+                  type="password"
+                  value={newAccount.password_hash}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="full_name" className="text-right">{t.fullname}</Label>
+                <Input
+                  id="full_name"
+                  name="full_name"
+                  value={newAccount.full_name}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="team_id" className="text-right">{t.teams}</Label>
+                <Select
+                  value={newAccount.team_id || ''}
+                  onValueChange={(value) => handleSelectChange(value, 'team_id')}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder={t.selectTeam} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="role_id" className="text-right">{t.role}</Label>
+                <Select
+                  value={newAccount.role_id || ''}
+                  onValueChange={(value) => handleSelectChange(value, 'role_id')}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder={t.selectRole} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)}>
+                {t.cancel}
+              </Button>
+              <Button type="submit">{t.save}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
