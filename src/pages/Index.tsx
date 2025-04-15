@@ -9,6 +9,9 @@ import TeamsManagement from "@/components/TeamsManagement";
 import AppliesManagement from "@/components/AppliesManagement";
 import InterviewManagement from "@/components/InterviewManagement";
 import RuleAssessmentManagement from "@/components/RuleAssessmentManagement";
+import QuestionTypeManagement from "@/components/QuestionTypeManagement";
+import QuestionManagement from "@/components/QuestionManagement";
+import QuestionHistoryManagement from "@/components/QuestionHistoryManagement";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -93,6 +96,12 @@ const Index = () => {
         return <InterviewManagement language={language} />;
       case "rule-assessment":
         return <RuleAssessmentManagement language={language} />;
+      case "type":
+        return <QuestionTypeManagement language={language} />;
+      case "questions":
+        return <QuestionManagement language={language} />;
+      case "history":
+        return <QuestionHistoryManagement language={language} />;
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
