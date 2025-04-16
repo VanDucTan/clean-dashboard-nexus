@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { Search, Edit2, Plus, Download, Upload, Trash2 } from "lucide-react";
 import {
   Table,
@@ -47,43 +48,70 @@ interface Assessment {
   lastTimeTested: string;
 }
 
-// Mock data for demonstration
-const mockAssessments: Assessment[] = [
-  {
-    id: 1,
-    firstDateTest: '2024-03-20',
-    infoSecurity: true,
-    email: 'john.doe@example.com',
-    fullName: 'John Doe',
-    totalTested: 5,
-    totalPassed: 4,
-    firstTimePassed: '2024-03-20 10:00',
-    lastTimePassed: '2024-03-22 14:30',
-    lastTimeTested: '2024-03-22 14:30'
-  },
-  {
-    id: 2,
-    firstDateTest: '2024-03-19',
-    infoSecurity: false,
-    email: 'jane.smith@example.com',
-    fullName: 'Jane Smith',
-    totalTested: 3,
-    totalPassed: 2,
-    firstTimePassed: '2024-03-19 09:15',
-    lastTimePassed: '2024-03-21 11:45',
-    lastTimeTested: '2024-03-21 16:20'
-  },
-];
+// Initialize Supabase client
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isWebhookDialogOpen, setIsWebhookDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
-  const [assessments, setAssessments] = useState<Assessment[]>(mockAssessments);
+  const [deletingAssessment, setDeletingAssessment] = useState<Assessment | null>(null);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Fetch assessments from Supabase
+  useEffect(() => {
+    fetchAssessments();
+  }, []);
+
+  const fetchAssessments = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('rule_assessment')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        // Transform the data to match our Assessment interface
+        const transformedData = data.map(item => ({
+          id: item.id,
+          firstDateTest: item.first_date_test,
+          infoSecurity: item.info_security,
+          email: item.email,
+          fullName: item.full_name,
+          totalTested: item.total_tested,
+          totalPassed: item.total_passed,
+          firstTimePassed: item.first_time_passed,
+          lastTimePassed: item.last_time_passed,
+          lastTimeTested: item.last_time_tested
+        }));
+
+        setAssessments(transformedData);
+      }
+    } catch (error) {
+      console.error('Error fetching assessments:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to fetch assessments' : 'Không thể tải dữ liệu đánh giá',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle search
   const filteredAssessments = assessments.filter(assessment => 
@@ -98,23 +126,48 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const content = e.target?.result as string;
           const importedData = JSON.parse(content);
-          setAssessments([...assessments, ...importedData]);
+          
+          // Transform data for Supabase
+          const transformedData = importedData.map((item: Assessment) => ({
+            first_date_test: item.firstDateTest,
+            info_security: item.infoSecurity,
+            email: item.email,
+            full_name: item.fullName,
+            total_tested: item.totalTested,
+            total_passed: item.totalPassed,
+            first_time_passed: item.firstTimePassed,
+            last_time_passed: item.lastTimePassed,
+            last_time_tested: item.lastTimeTested
+          }));
+
+          const { data, error } = await supabase
+            .from('rule_assessment')
+            .insert(transformedData)
+            .select();
+
+          if (error) {
+            throw error;
+          }
+
+          // Refresh data after successful import
+          await fetchAssessments();
           toast({
             title: language === 'en' ? 'Success' : 'Thành công',
             description: language === 'en' ? 'Data imported successfully' : 'Nhập dữ liệu thành công',
           });
         } catch (error) {
+          console.error('Error importing data:', error);
           toast({
             title: language === 'en' ? 'Error' : 'Lỗi',
-            description: language === 'en' ? 'Invalid file format' : 'Định dạng file không hợp lệ',
+            description: language === 'en' ? 'Failed to import data' : 'Không thể nhập dữ liệu',
             variant: 'destructive',
           });
         }
@@ -143,17 +196,85 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingAssessment) {
-      setAssessments(assessments.map(assessment => 
-        assessment.id === editingAssessment.id ? editingAssessment : assessment
-      ));
-      setIsEditDialogOpen(false);
-      setEditingAssessment(null);
-      toast({
-        title: language === 'en' ? 'Success' : 'Thành công',
-        description: language === 'en' ? 'Assessment updated successfully' : 'Cập nhật thành công',
-      });
+      try {
+        // Transform data for Supabase
+        const updateData = {
+          first_date_test: editingAssessment.firstDateTest,
+          info_security: editingAssessment.infoSecurity,
+          email: editingAssessment.email,
+          full_name: editingAssessment.fullName,
+          total_tested: editingAssessment.totalTested,
+          total_passed: editingAssessment.totalPassed,
+          first_time_passed: editingAssessment.firstTimePassed,
+          last_time_passed: editingAssessment.lastTimePassed,
+          last_time_tested: editingAssessment.lastTimeTested
+        };
+
+        const { data, error } = await supabase
+          .from('rule_assessment')
+          .update(updateData)
+          .eq('id', editingAssessment.id)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        // Refresh data after successful update
+        await fetchAssessments();
+        setIsEditDialogOpen(false);
+        setEditingAssessment(null);
+        toast({
+          title: language === 'en' ? 'Success' : 'Thành công',
+          description: language === 'en' ? 'Assessment updated successfully' : 'Cập nhật thành công',
+        });
+      } catch (error) {
+        console.error('Error updating assessment:', error);
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Failed to update assessment' : 'Không thể cập nhật đánh giá',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  // Handle delete
+  const handleDeleteClick = (assessment: Assessment) => {
+    setDeletingAssessment(assessment);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deletingAssessment) {
+      try {
+        const { error } = await supabase
+          .from('rule_assessment')
+          .delete()
+          .eq('id', deletingAssessment.id);
+
+        if (error) {
+          throw error;
+        }
+
+        // Refresh data after successful deletion
+        await fetchAssessments();
+        setIsDeleteDialogOpen(false);
+        setDeletingAssessment(null);
+        toast({
+          title: language === 'en' ? 'Success' : 'Thành công',
+          description: language === 'en' ? 'Assessment deleted successfully' : 'Xóa thành công',
+        });
+      } catch (error) {
+        console.error('Error deleting assessment:', error);
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Failed to delete assessment' : 'Không thể xóa đánh giá',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -217,6 +338,10 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       editAssessment: "Edit Assessment",
       yes: "Yes",
       no: "No",
+      deleteAssessment: "Delete Assessment",
+      deleteConfirmation: "Are you sure you want to delete this assessment?",
+      deleteWarning: "This action cannot be undone.",
+      delete: "Delete",
     },
     vi: {
       title: "Đánh giá quy tắc",
@@ -253,6 +378,10 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       editAssessment: "Chỉnh sửa đánh giá",
       yes: "Có",
       no: "Không",
+      deleteAssessment: "Xóa đánh giá",
+      deleteConfirmation: "Bạn có chắc chắn muốn xóa đánh giá này?",
+      deleteWarning: "Hành động này không thể hoàn tác.",
+      delete: "Xóa",
     }
   };
 
@@ -316,24 +445,45 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedAssessments.map((assessment) => (
-                <TableRow key={assessment.id}>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.firstDateTest}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.infoSecurity ? t[language].yes : t[language].no}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.email}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.fullName}</TableCell>
-                  <TableCell className="whitespace-nowrap">{assessment.totalTested}</TableCell>
-                  <TableCell className="whitespace-nowrap">{assessment.totalPassed}</TableCell>
-                  <TableCell className="whitespace-nowrap">{assessment.firstTimePassed}</TableCell>
-                  <TableCell className="whitespace-nowrap">{assessment.lastTimePassed}</TableCell>
-                  <TableCell className="whitespace-nowrap">{assessment.lastTimeTested}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(assessment)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-10">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : paginatedAssessments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-10">
+                    {language === 'en' ? 'No assessments found' : 'Không tìm thấy đánh giá nào'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedAssessments.map((assessment) => (
+                  <TableRow key={assessment.id}>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.firstDateTest}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.infoSecurity ? t[language].yes : t[language].no}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.email}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.fullName}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.totalTested}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.totalPassed}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.firstTimePassed}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.lastTimePassed}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.lastTimeTested}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(assessment)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(assessment)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -518,6 +668,28 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
             </Button>
             <Button onClick={handleSaveEdit}>
               {t[language].save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t[language].deleteAssessment}</DialogTitle>
+            <DialogDescription>
+              {t[language].deleteConfirmation}
+              <br />
+              <span className="text-red-500">{t[language].deleteWarning}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              {t[language].cancel}
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              {t[language].delete}
             </Button>
           </DialogFooter>
         </DialogContent>
