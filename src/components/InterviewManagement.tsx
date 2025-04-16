@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Search, Edit2, Plus, Download, Upload, Check, X, Trash2 } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { Search, Edit2, Plus, Download, Upload, Check, X, Trash2, Clock } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -42,11 +43,17 @@ interface Interview {
   fullName: string;
   infoSecurity: boolean;
   dateInterview: string;
-  result: string;
+  result: 'Passed' | 'Pending' | 'Failed';
   positionAssign: string;
   meetingLink: string;
   registrationDate: string;
 }
+
+// Initialize Supabase client
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 // Mock data for demonstration
 const mockInterviews = [
@@ -82,10 +89,56 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingInterview, setEditingInterview] = useState<Interview | null>(null);
   const [deletingInterview, setDeletingInterview] = useState<Interview | null>(null);
-  const [interviews, setInterviews] = useState<Interview[]>(mockInterviews);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Fetch interviews from Supabase
+  useEffect(() => {
+    fetchInterviews();
+  }, []);
+
+  const fetchInterviews = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('interview')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        // Transform the data to match our Interview interface
+        const transformedData = data.map(item => ({
+          id: item.id,
+          email: item.email,
+          fullName: item.full_name,
+          infoSecurity: item.info_security,
+          dateInterview: item.date_interview,
+          result: item.result,
+          positionAssign: item.position_assign,
+          meetingLink: item.meeting_link,
+          registrationDate: item.registration_date
+        }));
+
+        setInterviews(transformedData);
+      }
+    } catch (error) {
+      console.error('Error fetching interviews:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to fetch interviews' : 'Không thể tải dữ liệu phỏng vấn',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle search
   const filteredInterviews = interviews.filter(interview => 
@@ -106,23 +159,47 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const content = e.target?.result as string;
           const importedData = JSON.parse(content);
-          setInterviews([...interviews, ...importedData]);
+          
+          // Transform data for Supabase
+          const transformedData = importedData.map((item: Interview) => ({
+            email: item.email,
+            full_name: item.fullName,
+            info_security: item.infoSecurity,
+            date_interview: item.dateInterview,
+            result: item.result,
+            position_assign: item.positionAssign,
+            meeting_link: item.meetingLink,
+            registration_date: item.registrationDate
+          }));
+
+          const { error } = await supabase
+            .from('interview')
+            .insert(transformedData)
+            .select();
+
+          if (error) {
+            throw error;
+          }
+
+          // Refresh data after successful import
+          await fetchInterviews();
           toast({
             title: language === 'en' ? 'Success' : 'Thành công',
             description: language === 'en' ? 'Data imported successfully' : 'Nhập dữ liệu thành công',
           });
         } catch (error) {
+          console.error('Error importing data:', error);
           toast({
             title: language === 'en' ? 'Error' : 'Lỗi',
-            description: language === 'en' ? 'Invalid file format' : 'Định dạng file không hợp lệ',
+            description: language === 'en' ? 'Failed to import data' : 'Không thể nhập dữ liệu',
             variant: 'destructive',
           });
         }
@@ -151,17 +228,47 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingInterview) {
-      setInterviews(interviews.map(interview => 
-        interview.id === editingInterview.id ? editingInterview : interview
-      ));
-      setIsEditDialogOpen(false);
-      setEditingInterview(null);
-      toast({
-        title: language === 'en' ? 'Success' : 'Thành công',
-        description: language === 'en' ? 'Interview updated successfully' : 'Cập nhật thành công',
-      });
+      try {
+        // Chuyển đổi dữ liệu để phù hợp với schema của Supabase
+        const updateData = {
+          email: editingInterview.email,
+          full_name: editingInterview.fullName,
+          info_security: editingInterview.infoSecurity,
+          date_interview: editingInterview.dateInterview,
+          result: editingInterview.result,
+          position_assign: editingInterview.positionAssign,
+          meeting_link: editingInterview.meetingLink,
+          registration_date: editingInterview.registrationDate
+        };
+
+        const { data, error } = await supabase
+          .from('interview')
+          .update(updateData)
+          .eq('id', editingInterview.id)
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        // Refresh data after successful update
+        await fetchInterviews();
+        setIsEditDialogOpen(false);
+        setEditingInterview(null);
+        toast({
+          title: language === 'en' ? 'Success' : 'Thành công',
+          description: language === 'en' ? 'Interview updated successfully' : 'Cập nhật thành công',
+        });
+      } catch (error) {
+        console.error('Error updating interview:', error);
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Failed to update interview' : 'Không thể cập nhật phỏng vấn',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -171,14 +278,62 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deletingInterview) {
-      setInterviews(interviews.filter(interview => interview.id !== deletingInterview.id));
-      setIsDeleteDialogOpen(false);
-      setDeletingInterview(null);
+      try {
+        const { error } = await supabase
+          .from('interview')
+          .delete()
+          .eq('id', deletingInterview.id);
+
+        if (error) {
+          throw error;
+        }
+
+        // Refresh data after successful deletion
+        await fetchInterviews();
+        setIsDeleteDialogOpen(false);
+        setDeletingInterview(null);
+        toast({
+          title: language === 'en' ? 'Success' : 'Thành công',
+          description: language === 'en' ? 'Interview deleted successfully' : 'Xóa thành công',
+        });
+      } catch (error) {
+        console.error('Error deleting interview:', error);
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Failed to delete interview' : 'Không thể xóa phỏng vấn',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  // Add handler for result change
+  const handleResultChange = async (interviewId: number, newResult: string) => {
+    try {
+      const { error } = await supabase
+        .from('interview')
+        .update({ result: newResult })
+        .eq('id', interviewId)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      // Refresh data after successful update
+      await fetchInterviews();
       toast({
         title: language === 'en' ? 'Success' : 'Thành công',
-        description: language === 'en' ? 'Interview deleted successfully' : 'Xóa thành công',
+        description: language === 'en' ? 'Status updated successfully' : 'Cập nhật trạng thái thành công',
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to update status' : 'Không thể cập nhật trạng thái',
+        variant: 'destructive',
       });
     }
   };
@@ -352,9 +507,34 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
                   <TableCell className="text-center whitespace-nowrap">{interview.infoSecurity ? t[language].yes : t[language].no}</TableCell>
                   <TableCell className="whitespace-nowrap">{interview.dateInterview}</TableCell>
                   <TableCell className="whitespace-nowrap">
-                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getResultBadgeColor(interview.result)}`}>
-                      {t[language][interview.result.toLowerCase() as keyof typeof t.en]}
-                    </div>
+                    <Select
+                      value={interview.result}
+                      onValueChange={(value) => handleResultChange(interview.id, value)}
+                    >
+                      <SelectTrigger className={`w-[120px] ${getResultBadgeColor(interview.result)}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Passed">
+                          <span className="flex items-center">
+                            <Check className="mr-2 h-4 w-4 text-green-500" />
+                            {t[language].passed}
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Pending">
+                          <span className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4 text-yellow-500" />
+                            {t[language].pending}
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Failed">
+                          <span className="flex items-center">
+                            <X className="mr-2 h-4 w-4 text-red-500" />
+                            {t[language].failed}
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell className="whitespace-nowrap max-w-[200px] truncate">{interview.positionAssign}</TableCell>
                   <TableCell className="whitespace-nowrap max-w-[200px] truncate">
@@ -503,7 +683,7 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
                 </Label>
                 <Select
                   value={editingInterview?.result || ''}
-                  onValueChange={(value) => setEditingInterview({ ...editingInterview!, result: value })}
+                  onValueChange={(value) => setEditingInterview({ ...editingInterview!, result: value as 'Passed' | 'Pending' | 'Failed' })}
                 >
                   <SelectTrigger>
                     <SelectValue />
