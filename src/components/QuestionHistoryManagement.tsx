@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from "lucide-react";
+import { supabase } from '@/lib/supabase';
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -26,57 +28,75 @@ interface QuestionHistoryManagementProps {
 
 interface TestHistory {
   id: number;
-  dateTest: string;
+  date_test: string;
   email: string;
-  fullName: string;
+  full_name: string;
   result: 'passed' | 'failed';
-  correctAnswers: number;
-  totalQuestions: number;
-  assessmentType: string;
+  correct_answers: number;
+  total_questions: number;
+  assessment_type: string;
+  created_at: string;
+  updated_at: string;
 }
-
-// Mock data for demonstration
-const mockHistory: TestHistory[] = [
-  {
-    id: 1,
-    dateTest: '03/09/2024',
-    email: 'dianaduongle@gmail.com',
-    fullName: 'Diana Duong Le',
-    result: 'failed',
-    correctAnswers: 3,
-    totalQuestions: 5,
-    assessmentType: 'rule'
-  },
-  {
-    id: 2,
-    dateTest: '03/09/2024',
-    email: 'nguyenthanhnam@gmail.com',
-    fullName: 'Nguyen Thanh Nam',
-    result: 'passed',
-    correctAnswers: 4,
-    totalQuestions: 5,
-    assessmentType: 'rule'
-  }
-];
 
 const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('rule');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [historyData, setHistoryData] = useState<TestHistory[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
-  // Handle search and filter
-  const filteredHistory = mockHistory.filter(history => 
-    (history.assessmentType === selectedType) &&
-    (history.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     history.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  // Pagination
+  // Calculate pagination values
   const indexOfLastItem = currentPage * rowsPerPage;
   const indexOfFirstItem = indexOfLastItem - rowsPerPage;
-  const paginatedHistory = filteredHistory.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredHistory.length / rowsPerPage);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setIsLoading(true);
+      try {
+        // First get the total count
+        const { count, error: countError } = await supabase
+          .from('test_history')
+          .select('*', { count: 'exact', head: true })
+          .eq('assessment_type', selectedType)
+          .ilike('email', `%${searchQuery}%`);
+
+        if (countError) {
+          console.error('Error fetching count:', countError);
+        } else {
+          setTotalCount(count || 0);
+        }
+
+        // Then get the paginated data
+        const { data, error } = await supabase
+          .from('test_history')
+          .select('*')
+          .eq('assessment_type', selectedType)
+          .ilike('email', `%${searchQuery}%`)
+          .order('date_test', { ascending: false })
+          .range(indexOfFirstItem, indexOfLastItem - 1);
+
+        if (error) {
+          console.error('Error fetching history:', error);
+          toast.error(language === 'en' ? 'Failed to load test history' : 'Không thể tải lịch sử bài thi');
+        } else {
+          setHistoryData(data || []);
+        }
+      } catch (err) {
+        console.error('Error in fetchHistory:', err);
+        toast.error(language === 'en' ? 'Failed to load test history' : 'Không thể tải lịch sử bài thi');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [language, currentPage, rowsPerPage, indexOfFirstItem, indexOfLastItem, selectedType, searchQuery]);
+
+  // Pagination
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
 
   // Translations
   const t = {
@@ -166,28 +186,44 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedHistory.map((history) => (
-                <TableRow key={history.id}>
-                  <TableCell className="whitespace-nowrap">{history.dateTest}</TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">
-                    {history.email}
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-4">
+                    {language === 'en' ? 'Loading...' : 'Đang tải...'}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap max-w-[200px] truncate">
-                    {history.fullName}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={history.result === 'passed' ? 'default' : 'destructive'}
-                    >
-                      {history.result === 'passed' ? t[language].passed : t[language].failed}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {history.correctAnswers}/{history.totalQuestions}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{history.assessmentType}</TableCell>
                 </TableRow>
-              ))}
+              ) : historyData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-4">
+                    {language === 'en' ? 'No records found' : 'Không tìm thấy dữ liệu'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                historyData.map((history) => (
+                  <TableRow key={history.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(history.date_test).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {history.email}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {history.full_name}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={history.result === 'passed' ? 'default' : 'destructive'}
+                      >
+                        {history.result === 'passed' ? t[language].passed : t[language].failed}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {history.correct_answers}/{history.total_questions}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{history.assessment_type}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -215,8 +251,8 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
             </Select>
             <span className="text-sm text-muted-foreground">
               {t[language].showing} {((currentPage - 1) * rowsPerPage) + 1}-
-              {Math.min(currentPage * rowsPerPage, filteredHistory.length)} {t[language].of}{" "}
-              {filteredHistory.length}
+              {Math.min(currentPage * rowsPerPage, totalCount)} {t[language].of}{" "}
+              {totalCount}
             </span>
           </div>
           <CustomPagination
@@ -237,4 +273,4 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
   );
 };
 
-export default QuestionHistoryManagement; 
+export default QuestionHistoryManagement;

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, Edit2, Plus, Download, Upload, Trash2, X } from "lucide-react";
 import {
   Table,
@@ -29,6 +29,7 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import CustomPagination from "@/components/ui/custom-pagination";
 import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
 
 interface QuestionManagementProps {
   language: 'en' | 'vi';
@@ -38,62 +39,167 @@ interface Question {
   id: number;
   question: string;
   level: number;
-  answers: Answer[];
-  type: string;
+  type_id: number;
+  created_at?: string;
+  updated_at?: string;
+  answers?: Answer[];
 }
 
 interface Answer {
   id: number;
+  question_id: number;
   text: string;
-  isCorrect: boolean;
+  is_correct: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
-// Mock data for demonstration
-const mockQuestions: Question[] = [
-  {
-    id: 1,
-    question: 'Khi nào là lúc bạn đặt câu hỏi cho kênh Youtube NhiLe. CHỌN 1 CÂU ĐÚNG.',
-    level: 1,
-    type: 'rule',
-    answers: [
-      { id: 1, text: 'Xem hết tất cả các Livestream', isCorrect: true },
-      { id: 2, text: 'Xem đến Livestream số 100', isCorrect: false },
-      { id: 3, text: 'Khi có câu hỏi trong đầu và chưa xem hết livestream', isCorrect: false },
-      { id: 4, text: 'Khi nào cũng được', isCorrect: false }
-    ]
-  }
-];
+interface QuestionType {
+  id: number;
+  name: string;
+  template: string;
+  team: string;
+  title: string;
+}
 
 const QuestionManagement = ({ language }: QuestionManagementProps) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState('rule');
+  const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
+  const [questionTypes, setQuestionTypes] = useState<QuestionType[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deletingQuestion, setDeletingQuestion] = useState<Question | null>(null);
-  const [questions, setQuestions] = useState<Question[]>(mockQuestions);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Handle file import
-  const handleImport = () => {
-    fileInputRef.current?.click();
+  // Fetch question types
+  const fetchQuestionTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('question_type')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+
+      if (data) {
+        setQuestionTypes(data);
+        // Set first question type as default if none selected
+        if (!selectedTypeId && data.length > 0) {
+          setSelectedTypeId(data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching question types:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to fetch question types' : 'Không thể tải loại câu hỏi',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Fetch questions and question types on component mount
+  useEffect(() => {
+    fetchQuestionTypes();
+  }, []);
+
+  useEffect(() => {
+    if (selectedTypeId) {
+      fetchQuestions();
+    }
+  }, [selectedTypeId]);
+
+  // Update fetchQuestions to filter by type_id
+  const fetchQuestions = async () => {
+    try {
+      setIsLoading(true);
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('question')
+        .select('*')
+        .eq('type_id', selectedTypeId)
+        .order('created_at', { ascending: false });
+
+      if (questionsError) throw questionsError;
+
+      const { data: answersData, error: answersError } = await supabase
+        .from('answer')
+        .select('*');
+
+      if (answersError) throw answersError;
+
+      const questionsWithAnswers = questionsData.map(question => ({
+        ...question,
+        answers: answersData
+          .filter(answer => answer.question_id === question.id)
+          .map(answer => ({
+            id: answer.id,
+            question_id: answer.question_id,
+            text: answer.text,
+            is_correct: answer.is_correct,
+            created_at: answer.created_at,
+            updated_at: answer.updated_at
+          }))
+      }));
+
+      setQuestions(questionsWithAnswers);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: language === 'en' ? 'Failed to fetch questions' : 'Không thể tải câu hỏi',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle file import
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const importedQuestions = JSON.parse(e.target?.result as string);
-          setQuestions([...questions, ...importedQuestions]);
+          
+          // Insert questions and get their new IDs
+          const { data: insertedQuestions, error: questionsError } = await supabase
+            .from('question')
+            .insert(importedQuestions.map((q: Question) => ({
+              question: q.question,
+              level: q.level,
+              type_id: q.type_id
+            })))
+            .select();
+
+          if (questionsError) throw questionsError;
+
+          // Insert answers with new question IDs
+          for (let i = 0; i < importedQuestions.length; i++) {
+            const { error: answersError } = await supabase
+              .from('answer')
+              .insert(importedQuestions[i].answers.map((a: Answer) => ({
+                question_id: insertedQuestions[i].id,
+                text: a.text,
+                is_correct: a.is_correct
+              })));
+
+            if (answersError) throw answersError;
+          }
+
+          await fetchQuestions();
           toast({
             title: language === 'en' ? 'Success' : 'Thành công',
             description: language === 'en' ? 'Questions imported successfully' : 'Nhập câu hỏi thành công',
           });
         } catch (error) {
+          console.error('Error importing questions:', error);
           toast({
             title: language === 'en' ? 'Error' : 'Lỗi',
             description: language === 'en' ? 'Failed to import questions' : 'Nhập câu hỏi thất bại',
@@ -107,13 +213,13 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
 
   // Handle export
   const handleExport = () => {
-    const filteredQuestions = questions.filter(q => q.type === selectedType);
+    const filteredQuestions = questions.filter(q => q.type_id === selectedTypeId);
     const dataStr = JSON.stringify(filteredQuestions, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `questions_${selectedType}_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `questions_${selectedTypeId}_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -122,7 +228,7 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
 
   // Handle search
   const filteredQuestions = questions.filter(question => 
-    question.type === selectedType &&
+    question.type_id === selectedTypeId &&
     question.question.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -138,16 +244,181 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  // Handle add answer
+  const handleAddAnswer = () => {
     if (editingQuestion) {
-      setQuestions(questions.map(question => 
-        question.id === editingQuestion.id ? editingQuestion : question
-      ));
+      const newAnswer: Answer = {
+        id: Date.now(), // Temporary ID for UI only
+        question_id: editingQuestion.id || 0,
+        text: '',
+        is_correct: false
+      };
+      setEditingQuestion({
+        ...editingQuestion,
+        answers: [...(editingQuestion.answers || []), newAnswer]
+      });
+    }
+  };
+
+  // Create new question
+  const handleCreate = async () => {
+    if (!editingQuestion) return;
+
+    try {
+      // Get the question type
+      const questionType = questionTypes.find(t => t.id === selectedTypeId);
+      if (!questionType) {
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Please select a question type' : 'Vui lòng chọn loại câu hỏi',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Create question
+      const { data: newQuestion, error: questionError } = await supabase
+        .from('question')
+        .insert([{
+          question: editingQuestion.question.trim(),
+          level: editingQuestion.level,
+          type: questionType.name,
+          type_id: selectedTypeId
+        }])
+        .select()
+        .single();
+
+      if (questionError) throw questionError;
+      if (!newQuestion) throw new Error('Failed to create question');
+
+      // Insert answers
+      if (editingQuestion.answers && editingQuestion.answers.length > 0) {
+        const { error: answersError } = await supabase
+          .from('answer')
+          .insert(editingQuestion.answers.map(answer => ({
+            question_id: newQuestion.id,
+            text: answer.text.trim(),
+            is_correct: answer.is_correct
+          })));
+
+        if (answersError) throw answersError;
+      }
+
+      await fetchQuestions();
+      setIsEditDialogOpen(false);
+      setEditingQuestion(null);
+      toast({
+        title: language === 'en' ? 'Success' : 'Thành công',
+        description: language === 'en' ? 'Question created successfully' : 'Tạo mới thành công',
+      });
+    } catch (error) {
+      console.error('Error creating question:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: error instanceof Error ? error.message : (language === 'en' ? 'Failed to create question' : 'Tạo mới thất bại'),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle save edit
+  const handleSaveEdit = async () => {
+    if (!editingQuestion) return;
+
+    try {
+      // Validate required fields
+      if (!editingQuestion.question?.trim() || !editingQuestion.level) {
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Please fill in all required fields' : 'Vui lòng điền đầy đủ thông tin bắt buộc',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Validate answers
+      if (!editingQuestion.answers || editingQuestion.answers.length === 0) {
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Please add at least one answer' : 'Vui lòng thêm ít nhất một câu trả lời',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const hasEmptyAnswer = editingQuestion.answers.some(answer => !answer.text.trim());
+      if (hasEmptyAnswer) {
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Please fill in all answer texts' : 'Vui lòng điền đầy đủ nội dung câu trả lời',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Get the question type
+      const questionType = questionTypes.find(t => t.id === selectedTypeId);
+      if (!questionType) {
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Please select a question type' : 'Vui lòng chọn loại câu hỏi',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!editingQuestion.id) {
+        // This is a new question
+        await handleCreate();
+        return;
+      }
+
+      // Update existing question
+      const { error: questionError } = await supabase
+        .from('question')
+        .update({
+          question: editingQuestion.question.trim(),
+          level: editingQuestion.level,
+          type: questionType.name,
+          type_id: selectedTypeId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingQuestion.id);
+
+      if (questionError) throw questionError;
+
+      // Delete existing answers
+      const { error: deleteError } = await supabase
+        .from('answer')
+        .delete()
+        .eq('question_id', editingQuestion.id);
+
+      if (deleteError) throw deleteError;
+
+      // Insert new answers
+      const { error: answersError } = await supabase
+        .from('answer')
+        .insert(editingQuestion.answers.map(answer => ({
+          question_id: editingQuestion.id,
+          text: answer.text.trim(),
+          is_correct: answer.is_correct
+        })));
+
+      if (answersError) throw answersError;
+
+      await fetchQuestions();
       setIsEditDialogOpen(false);
       setEditingQuestion(null);
       toast({
         title: language === 'en' ? 'Success' : 'Thành công',
         description: language === 'en' ? 'Question updated successfully' : 'Cập nhật thành công',
+      });
+    } catch (error) {
+      console.error('Error saving question:', error);
+      toast({
+        title: language === 'en' ? 'Error' : 'Lỗi',
+        description: error instanceof Error ? error.message : (language === 'en' ? 'Failed to save question' : 'Lưu thất bại'),
+        variant: 'destructive',
       });
     }
   };
@@ -158,36 +429,38 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  // Handle confirm delete
+  const handleConfirmDelete = async () => {
     if (deletingQuestion) {
-      setQuestions(questions.filter(question => question.id !== deletingQuestion.id));
-      setIsDeleteDialogOpen(false);
-      setDeletingQuestion(null);
-      toast({
-        title: language === 'en' ? 'Success' : 'Thành công',
-        description: language === 'en' ? 'Question deleted successfully' : 'Xóa thành công',
-      });
-    }
-  };
+      try {
+        const { error } = await supabase
+          .from('question')
+          .delete()
+          .eq('id', deletingQuestion.id);
 
-  // Handle add answer
-  const handleAddAnswer = () => {
-    if (editingQuestion) {
-      const newAnswer: Answer = {
-        id: Math.max(...editingQuestion.answers.map(a => a.id), 0) + 1,
-        text: '',
-        isCorrect: false
-      };
-      setEditingQuestion({
-        ...editingQuestion,
-        answers: [...editingQuestion.answers, newAnswer]
-      });
+        if (error) throw error;
+
+        await fetchQuestions();
+        setIsDeleteDialogOpen(false);
+        setDeletingQuestion(null);
+        toast({
+          title: language === 'en' ? 'Success' : 'Thành công',
+          description: language === 'en' ? 'Question deleted successfully' : 'Xóa thành công',
+        });
+      } catch (error) {
+        console.error('Error deleting question:', error);
+        toast({
+          title: language === 'en' ? 'Error' : 'Lỗi',
+          description: language === 'en' ? 'Failed to delete question' : 'Xóa thất bại',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
   // Handle remove answer
   const handleRemoveAnswer = (answerId: number) => {
-    if (editingQuestion) {
+    if (editingQuestion && editingQuestion.answers) {
       setEditingQuestion({
         ...editingQuestion,
         answers: editingQuestion.answers.filter(a => a.id !== answerId)
@@ -264,13 +537,19 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
         {/* Type Selection and Actions */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Select value={selectedType} onValueChange={setSelectedType}>
+            <Select
+              value={selectedTypeId?.toString()}
+              onValueChange={(value) => setSelectedTypeId(parseInt(value))}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder={t[language].selectType} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="rule">Rule</SelectItem>
-                <SelectItem value="default">Default</SelectItem>
+                {questionTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.id.toString()}>
+                    {type.title}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <input
@@ -280,7 +559,7 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
               accept=".json"
               onChange={handleFileChange}
             />
-            <Button variant="outline" onClick={handleImport}>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
               <Upload className="mr-2 h-4 w-4" />
               {t[language].import}
             </Button>
@@ -291,10 +570,10 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
           </div>
           <Button onClick={() => {
             setEditingQuestion({
-              id: Math.max(...questions.map(q => q.id), 0) + 1,
+              id: 0, // Remove manual ID generation
               question: '',
               level: 1,
-              type: selectedType,
+              type_id: selectedTypeId || questionTypes[0]?.id,
               answers: []
             });
             setIsEditDialogOpen(true);
@@ -315,36 +594,42 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
           />
         </div>
 
-        {/* Questions List */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60%]">{t[language].question}</TableHead>
-                <TableHead>{t[language].level}</TableHead>
-                <TableHead className="text-right">{t[language].actions}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedQuestions.map((question) => (
-                <TableRow key={question.id}>
-                  <TableCell className="font-medium">{question.question}</TableCell>
-                  <TableCell>{question.level}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(question)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(question)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        {/* Questions List with Loading State */}
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[60%]">{t[language].question}</TableHead>
+                  <TableHead>{t[language].level}</TableHead>
+                  <TableHead className="text-right">{t[language].actions}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {paginatedQuestions.map((question) => (
+                  <TableRow key={question.id}>
+                    <TableCell className="font-medium">{question.question}</TableCell>
+                    <TableCell>{question.level}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(question)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(question)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         {/* Pagination */}
         <div className="flex justify-between items-center">
@@ -439,24 +724,28 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {editingQuestion?.answers.map((answer, index) => (
+                  {editingQuestion?.answers?.map((answer, index) => (
                     <div key={answer.id} className="flex items-center gap-2">
                       <Input
                         value={answer.text}
                         onChange={(e) => {
-                          const newAnswers = [...editingQuestion.answers];
-                          newAnswers[index] = { ...answer, text: e.target.value };
-                          setEditingQuestion({ ...editingQuestion, answers: newAnswers });
+                          if (editingQuestion.answers) {
+                            const newAnswers = [...editingQuestion.answers];
+                            newAnswers[index] = { ...answer, text: e.target.value };
+                            setEditingQuestion({ ...editingQuestion, answers: newAnswers });
+                          }
                         }}
                         placeholder={`${t[language].answers} ${index + 1}`}
                       />
                       <div className="flex items-center gap-2">
                         <Switch
-                          checked={answer.isCorrect}
+                          checked={answer.is_correct}
                           onCheckedChange={(checked) => {
-                            const newAnswers = [...editingQuestion.answers];
-                            newAnswers[index] = { ...answer, isCorrect: checked };
-                            setEditingQuestion({ ...editingQuestion, answers: newAnswers });
+                            if (editingQuestion.answers) {
+                              const newAnswers = [...editingQuestion.answers];
+                              newAnswers[index] = { ...answer, is_correct: checked };
+                              setEditingQuestion({ ...editingQuestion, answers: newAnswers });
+                            }
                           }}
                         />
                         <span className="text-sm">{t[language].correct}</span>
