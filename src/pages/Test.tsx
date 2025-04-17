@@ -1,11 +1,9 @@
 import React from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import QuestionTestManagement from '@/components/QuestionTestManagement';
 
 const Test = () => {
   const { id } = useParams();
-  const location = useLocation();
-  const isQuestionsPage = location.pathname.includes('/questions');
 
   return (
     <div className="min-h-screen bg-white">
@@ -32,12 +30,8 @@ const Test = () => {
         </div>
 
         {/* Test content */}
-        <div className={`bg-gray-50 p-6 rounded-lg shadow-sm ${isQuestionsPage ? 'max-w-4xl mx-auto' : ''}`}>
-          <QuestionTestManagement 
-            testId={id} 
-            language="vi"
-            startWithQuestions={isQuestionsPage}
-          />
+        <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
+          <QuestionTestManagement testId={id} language="vi" />
         </div>
       </div>
     </div>

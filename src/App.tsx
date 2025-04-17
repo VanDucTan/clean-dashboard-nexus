@@ -28,7 +28,6 @@ function App() {
                   <Route path="/login" element={<Login />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/test/:id" element={<Test />} />
-                  <Route path="/test/:id/questions" element={<Test />} />
 
                   {/* Protected routes */}
                   <Route

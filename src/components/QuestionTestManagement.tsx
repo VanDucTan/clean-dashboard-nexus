@@ -26,7 +26,6 @@ const supabase = createClient(
 interface QuestionTestManagementProps {
   language?: 'en' | 'vi';
   testId?: string;
-  startWithQuestions?: boolean;
 }
 
 interface QuestionType {
@@ -58,6 +57,16 @@ interface TestHistory {
   correct_answers: number;
   total_questions: number;
   assessment_type: string;
+}
+
+interface ResultScreenProps {
+  testScore: { correct: number; total: number };
+  questions: Question[];
+  answers: { [key: number]: Answer[] };
+  selectedAnswers: { [key: number]: number };
+  language: 'en' | 'vi';
+  onRetake: () => void;
+  onHome: () => void;
 }
 
 const translations = {
@@ -101,11 +110,153 @@ const translations = {
   },
 };
 
-const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ 
-  language = 'en', 
-  testId,
-  startWithQuestions = false 
+const ResultScreen: React.FC<ResultScreenProps> = ({
+  testScore,
+  questions,
+  answers,
+  selectedAnswers,
+  language,
+  onRetake,
+  onHome
 }) => {
+  const t = translations[language];
+  const isPassed = testScore.correct >= Math.ceil(testScore.total * 0.8);
+
+  return (
+    <Box sx={{ 
+      maxWidth: '1000px', 
+      margin: '0 auto', 
+      padding: '2rem',
+      minHeight: '100vh',
+      bgcolor: 'background.default'
+    }}>
+      {/* Header */}
+      <Box sx={{ 
+        textAlign: 'center',
+        mb: 4
+      }}>
+        <Typography variant="h4" gutterBottom sx={{ 
+          color: isPassed ? 'success.main' : 'error.main',
+          fontWeight: 'bold'
+        }}>
+          {t.testComplete}
+        </Typography>
+
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          {t.correctAnswers}: {testScore.correct} / {testScore.total}
+        </Typography>
+
+        <Typography variant="h5" sx={{ 
+          color: isPassed ? 'success.main' : 'error.main',
+          fontWeight: 'bold'
+        }}>
+          {isPassed ? t.passed : t.failed}
+        </Typography>
+      </Box>
+
+      {/* Questions Review */}
+      <Box sx={{ mb: 4 }}>
+        {questions.map((question, index) => {
+          const userAnswer = answers[question.id]?.find(a => a.id === selectedAnswers[question.id]);
+          const correctAnswer = answers[question.id]?.find(a => a.is_correct);
+          const isCorrect = userAnswer?.id === correctAnswer?.id;
+
+          return (
+            <Box
+              key={question.id}
+              sx={{
+                p: 3,
+                mb: 2,
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: isCorrect ? 'success.light' : 'error.light',
+                backgroundColor: isCorrect ? 'rgba(0, 200, 0, 0.05)' : 'rgba(255, 0, 0, 0.05)',
+              }}
+            >
+              {/* Question */}
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
+                <Typography variant="h6" sx={{ minWidth: '30px' }}>
+                  {index + 1}.
+                </Typography>
+                <Typography variant="h6">
+                  {question.question}
+                </Typography>
+                <Typography sx={{ 
+                  fontSize: '24px',
+                  lineHeight: 1,
+                  ml: 'auto'
+                }}>
+                  {isCorrect ? '✅' : '❌'}
+                </Typography>
+              </Box>
+
+              {/* Answers */}
+              <Box sx={{ pl: 5 }}>
+                <Typography sx={{ 
+                  mb: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}>
+                  <strong>{language === 'en' ? 'Your answer' : 'Câu trả lời của bạn'}:</strong>
+                  {userAnswer?.text}
+                </Typography>
+
+                {!isCorrect && (
+                  <Typography sx={{ 
+                    color: 'success.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <strong>{language === 'en' ? 'Correct answer' : 'Câu trả lời đúng'}:</strong>
+                    {correctAnswer?.text}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+
+      {/* Action Buttons */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        gap: 3,
+        mt: 4 
+      }}>
+        {!isPassed && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onRetake}
+            sx={{ 
+              minWidth: '200px',
+              py: 1.5
+            }}
+          >
+            {t.retake}
+          </Button>
+        )}
+        
+        <Button
+          variant="contained"
+          color={isPassed ? "success" : "error"}
+          onClick={onHome}
+          sx={{ 
+            minWidth: '200px',
+            py: 1.5
+          }}
+        >
+          {t.backToHome}
+        </Button>
+      </Box>
+    </Box>
+  );
+};
+
+const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ language = 'en', testId }) => {
   const navigate = useNavigate();
   const t = translations[language];
 
@@ -121,25 +272,42 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
   const [isValidatingEmail, setIsValidatingEmail] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [hasStarted, setHasStarted] = useState(false);
+
+  const fetchTypeId = async (name: string, team: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('question_type')
+        .select('id')
+        .eq('name', name)
+        .eq('team', team)
+        .single();
+
+      if (error) throw error;
+      return data?.id;
+    } catch (error) {
+      console.error('Error fetching type ID:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
-    if (testId) {
-      const [typeId] = testId.split('-');
-      if (typeId) {
-        const savedEmail = localStorage.getItem('testUserEmail');
-        if (startWithQuestions) {
-          if (savedEmail) {
-            setEmail(savedEmail);
-            setIsEmailValid(true);
-            fetchQuestions(parseInt(typeId));
+    const loadQuestions = async () => {
+      if (testId) {
+        // Format: {name}-{team}-{type_id}
+        const parts = testId.split('-');
+        if (parts.length >= 3) {
+          const typeId = parts[parts.length - 1];
+          if (typeId && !isNaN(Number(typeId))) {
+            await fetchQuestions(parseInt(typeId));
           } else {
-            // If no email is saved but we're on the questions page, redirect back to email input
-            navigate(`/test/${testId}`);
+            toast.error('ID không hợp lệ');
           }
         }
       }
-    }
-  }, [testId, startWithQuestions, navigate]);
+    };
+    loadQuestions();
+  }, [testId]);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -155,25 +323,19 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
 
   const fetchQuestions = async (typeId: number) => {
     try {
-      const { data: questionsData, error } = await supabase
+      const { data: questions, error } = await supabase
         .from('question')
         .select('*')
         .eq('type_id', typeId);
 
       if (error) throw error;
 
-      if (questionsData && questionsData.length > 0) {
-        setQuestions(questionsData);
-        await fetchAnswersForQuestions(questionsData);
-        return true;
-      } else {
-        toast.error('Không có câu hỏi nào cho bài kiểm tra này');
-        return false;
+      if (questions) {
+        setQuestions(questions);
+        await fetchAnswersForQuestions(questions);
       }
     } catch (error) {
-      console.error('Error fetching questions:', error);
-      toast.error('Lỗi khi tải câu hỏi');
-      return false;
+      toast.error('Error fetching questions');
     }
   };
 
@@ -242,39 +404,30 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
       return;
     }
 
-    setIsLoading(true);
-    const [typeId] = testId.split('-');
-    const isAuthorized = await checkEmailAuthorization(email, parseInt(typeId));
-    
-    if (!isAuthorized) {
-      setIsLoading(false);
+    // Format: {name}-{team}-{type_id}
+    const parts = testId.split('-');
+    if (parts.length < 3) {
+      toast.error('Link không hợp lệ');
       return;
     }
 
-    // Save email to localStorage for persistence
-    localStorage.setItem('testUserEmail', email);
-    
-    // Fetch questions before navigation
-    await fetchQuestions(parseInt(typeId));
-    
-    // Only navigate if questions were fetched successfully
-    if (questions.length > 0) {
-      navigate(`/test/${testId}/questions`);
-    } else {
-      toast.error('Không thể tải câu hỏi. Vui lòng thử lại.');
+    const typeId = parts[parts.length - 1];
+    if (!typeId || isNaN(Number(typeId))) {
+      toast.error('ID không hợp lệ');
+      return;
     }
-    
+
+    const parsedTypeId = parseInt(typeId);
+    const isAuthorized = await checkEmailAuthorization(email, parsedTypeId);
+    if (!isAuthorized) {
+      return;
+    }
+
+    setIsLoading(true);
+    await fetchQuestions(parsedTypeId);
+    setHasStarted(true);
     setIsLoading(false);
   };
-
-  // Add useEffect to check for saved email and authorization on component mount
-  useEffect(() => {
-    const savedEmail = localStorage.getItem('testUserEmail');
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setIsEmailValid(true);
-    }
-  }, []);
 
   const handleAnswerSelect = (questionId: number, answerId: number) => {
     setSelectedAnswers(prev => ({
@@ -353,9 +506,11 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
 
     const score = calculateScore();
     setTestScore(score);
+    setShowResults(true); // Immediately show the result screen
+
     const saved = await saveTestHistory(score);
-    if (saved) {
-      setShowResults(true);
+    if (!saved) {
+      toast.error('Failed to save test results');
     }
   };
 
@@ -367,60 +522,16 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
   };
 
   if (showResults && testScore) {
-    const isPassed = testScore.correct === testScore.total;
-    const resultStyle = {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      alignItems: 'center',
-      gap: '1rem',
-      padding: '2rem',
-      textAlign: 'center' as const,
-    };
-
     return (
-      <Box sx={resultStyle}>
-        <Typography variant="h4" gutterBottom sx={{ color: isPassed ? 'success.main' : 'error.main' }}>
-          {t.testComplete}
-        </Typography>
-        
-        <Typography variant="h6">
-          {t.correctAnswers}: {testScore.correct}
-        </Typography>
-        
-        <Typography variant="h6">
-          {t.totalQuestions}: {testScore.total}
-        </Typography>
-        
-        <Typography variant="h5" sx={{ 
-          color: isPassed ? 'success.main' : 'error.main',
-          fontWeight: 'bold',
-          my: 2 
-        }}>
-          {isPassed ? t.passed : t.failed}
-        </Typography>
-
-        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-          {!isPassed && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleRetake}
-              sx={{ minWidth: '150px' }}
-            >
-              {t.retake}
-            </Button>
-          )}
-          
-          <Button
-            variant="contained"
-            color={isPassed ? "success" : "error"}
-            onClick={() => navigate('/')}
-            sx={{ minWidth: '150px' }}
-          >
-            {t.backToHome}
-          </Button>
-        </Box>
-      </Box>
+      <ResultScreen
+        testScore={testScore}
+        questions={questions}
+        answers={answers}
+        selectedAnswers={selectedAnswers}
+        language={language}
+        onRetake={handleRetake}
+        onHome={() => navigate('/')}
+      />
     );
   }
 
@@ -433,16 +544,9 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
     );
   }
 
-  if (questions.length === 0) {
+  if (!hasStarted) {
     return (
-      <Box sx={{ 
-        p: 3,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        maxWidth: '400px',
-        margin: '0 auto'
-      }}>
+      <Box sx={{ p: 3 }}>
         <TextField
           fullWidth
           label={t.emailLabel}
@@ -451,6 +555,7 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
           error={!isEmailValid || !!authError}
           helperText={!isEmailValid ? t.invalidEmail : authError}
           sx={{ 
+            mb: 2,
             '& .MuiFormHelperText-root': {
               color: '#dc2626',
               fontWeight: 500
@@ -463,11 +568,6 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
           onClick={handleStartTest}
           disabled={!isEmailValid || !email || isValidatingEmail}
           fullWidth
-          sx={{
-            height: '48px',
-            fontSize: '1rem',
-            fontWeight: 500
-          }}
         >
           {isValidatingEmail ? (
             <CircularProgress size={24} color="inherit" />
@@ -479,25 +579,56 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
     );
   }
 
+  if (!questions || questions.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6" color="error">
+          Không tìm thấy câu hỏi cho bài kiểm tra này
+        </Typography>
+        <Button variant="contained" onClick={() => navigate('/')}>
+          {t.backToHome}
+        </Button>
+      </Box>
+    );
+  }
+
   const currentQuestion = questions[currentQuestionIndex];
+  if (!currentQuestion) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6" color="error">
+          Có lỗi khi tải câu hỏi
+        </Typography>
+        <Button variant="contained" onClick={() => navigate('/')}>
+          {t.backToHome}
+        </Button>
+      </Box>
+    );
+  }
+
   const currentAnswers = answers[currentQuestion.id] || [];
+  if (currentAnswers.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: 2 }}>
+        <Typography variant="h6" color="error">
+          Không tìm thấy câu trả lời cho câu hỏi này
+        </Typography>
+        <Button variant="contained" onClick={() => navigate('/')}>
+          {t.backToHome}
+        </Button>
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ 
-      p: 3,
-      maxWidth: '800px',
-      margin: '0 auto',
-      backgroundColor: '#f8fafc',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-    }}>
-      <Typography variant="h6" gutterBottom sx={{ fontWeight: 500 }}>
-        {`Câu ${currentQuestionIndex + 1}/${questions.length}`}
+    <Box sx={{ p: 3, minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Typography variant="h6" gutterBottom sx={{ color: 'text.primary' }}>
+        {`${currentQuestionIndex + 1}/${questions.length}: ${currentQuestion.question}`}
       </Typography>
-      <Typography variant="body1" gutterBottom sx={{ mb: 3, fontWeight: 500 }}>
-        {currentQuestion.question}
-      </Typography>
-      <FormControl component="fieldset" sx={{ width: '100%', mb: 3 }}>
+      <FormControl component="fieldset" sx={{ width: '100%', mb: 2 }}>
+        <FormLabel component="legend" sx={{ color: 'text.secondary' }}>
+          {language === 'en' ? 'Select your answer:' : 'Chọn câu trả lời:'}
+        </FormLabel>
         <RadioGroup
           value={selectedAnswers[currentQuestion.id] || ''}
           onChange={(e) => handleAnswerSelect(currentQuestion.id, Number(e.target.value))}
@@ -508,22 +639,17 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
               value={answer.id}
               control={<Radio />}
               label={answer.text}
-              sx={{
-                mb: 1,
-                p: 1,
-                borderRadius: '4px',
-                '&:hover': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                }
-              }}
+              sx={{ color: 'text.primary' }}
             />
           ))}
         </RadioGroup>
       </FormControl>
+
+      {/* Navigation and Submit */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
-        mt: 3,
+        mt: 4,
         gap: 2
       }}>
         <Button
@@ -534,24 +660,56 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({
         >
           {t.previous}
         </Button>
-        {currentQuestionIndex === questions.length - 1 ? (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSubmit}
-            sx={{ minWidth: '120px' }}
-          >
-            {t.submit}
-          </Button>
-        ) : (
-          <Button
-            variant="contained"
-            onClick={handleNext}
-            sx={{ minWidth: '120px' }}
-          >
-            {t.next}
-          </Button>
-        )}
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {/* Show Submit button if all questions are answered */}
+          {Object.keys(selectedAnswers).length === questions.length ? (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmit}
+              sx={{ 
+                minWidth: '120px',
+                bgcolor: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                }
+              }}
+            >
+              {t.submit}
+            </Button>
+          ) : currentQuestionIndex === questions.length - 1 ? (
+            <Button
+              variant="contained"
+              color="primary"
+              disabled
+              sx={{ minWidth: '120px' }}
+            >
+              {t.submit}
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              sx={{ minWidth: '120px' }}
+            >
+              {t.next}
+            </Button>
+          )}
+        </Box>
+      </Box>
+
+      {/* Progress Indicator */}
+      <Box sx={{ 
+        mt: 3, 
+        display: 'flex', 
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2 
+      }}>
+        <Typography color="text.secondary">
+          {Object.keys(selectedAnswers).length} / {questions.length} {language === 'en' ? 'questions answered' : 'câu đã trả lời'}
+        </Typography>
       </Box>
     </Box>
   );

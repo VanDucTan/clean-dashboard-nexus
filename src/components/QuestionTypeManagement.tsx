@@ -110,7 +110,7 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
       const updatedTypes = types.map(type => ({
         ...type,
         has_questions: typeIdsWithQuestions.has(type.id),
-        link: typeIdsWithQuestions.has(type.id) ? generateUniqueLink(type.name, type.team || '') : null
+        link: typeIdsWithQuestions.has(type.id) ? generateUniqueLink(type.name, type.team || '', type.id) : null
       }));
 
       setQuestionTypes(updatedTypes);
@@ -171,22 +171,31 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
         return;
       }
 
-      const link = generateUniqueLink(formData.name, formData.team);
-
-      const { data, error } = await supabase
+      // First insert the record to get the ID
+      const { data: newType, error: insertError } = await supabase
         .from('question_type')
-        .insert([{ ...formData, link }])
-        .select();
+        .insert([{ ...formData }])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
+
+      // Then update with the link using the new ID
+      if (newType) {
+        const link = generateUniqueLink(formData.name, formData.team, newType.id);
+        const { error: updateError } = await supabase
+          .from('question_type')
+          .update({ link })
+          .eq('id', newType.id);
+
+        if (updateError) throw updateError;
+      }
 
       toast({
         title: language === 'en' ? 'Success' : 'Thành công',
         description: language === 'en' ? 'Question type created successfully' : 'Tạo mới thành công',
       });
       setIsCreateDialogOpen(false);
-      setIsEditDialogOpen(false);
-      setEditingType(null);
       setFormData({ name: '', title: '', template: '', team: '' });
       fetchQuestionTypes();
     } catch (error) {
@@ -216,8 +225,6 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
     if (!editingType) return;
 
     try {
-      console.log('Editing type data:', editingType); // Debug log
-
       // Validate required fields
       const requiredFields = {
         name: editingType.name,
@@ -230,7 +237,6 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
         .map(([key]) => key);
 
       if (missingFields.length > 0) {
-        console.log('Missing fields:', missingFields); // Debug log
         toast({
           title: language === 'en' ? 'Error' : 'Lỗi',
           description: language === 'en' 
@@ -241,7 +247,7 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
         return;
       }
 
-      const link = generateUniqueLink(formData.name, formData.team);
+      const link = generateUniqueLink(formData.name, formData.team, editingType.id);
 
       const questionTypeData = {
         name: editingType.name.trim(),
@@ -253,22 +259,17 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
         updated_at: new Date().toISOString()
       };
 
-      console.log('Saving data:', questionTypeData); // Debug log
-
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('question_type')
         .update(questionTypeData)
-        .eq('id', editingType.id)
-        .select();
+        .eq('id', editingType.id);
 
-      console.log('Update response:', { data, error }); // Debug log
       if (error) throw error;
 
       toast({
         title: language === 'en' ? 'Success' : 'Thành công',
         description: language === 'en' ? 'Question type updated successfully' : 'Cập nhật thành công',
       });
-      setIsCreateDialogOpen(false);
       setIsEditDialogOpen(false);
       setEditingType(null);
       setFormData({ name: '', title: '', template: '', team: '' });
@@ -320,12 +321,11 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
     }
   };
 
-  const generateUniqueLink = (name: string, team: string) => {
+  const generateUniqueLink = (name: string, team: string, typeId: number) => {
     const baseUrl = window.location.origin;
     const sanitizedName = name.toLowerCase().replace(/\s+/g, '-');
     const sanitizedTeam = team.toLowerCase().replace(/\s+/g, '-');
-    const timestamp = Date.now().toString(36);
-    return `${baseUrl}/test/${sanitizedName}-${sanitizedTeam}-${timestamp}`;
+    return `${baseUrl}/test/${sanitizedName}-${sanitizedTeam}-${typeId}`;
   };
 
   // Translations
