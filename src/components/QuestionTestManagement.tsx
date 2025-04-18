@@ -464,34 +464,65 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ languag
     try {
       const result = score.correct >= score.total * 0.8 ? 'passed' : 'failed';
       
-      if (!email) {
-        toast.error('Missing required information');
+      if (!email || !testId) {
+        console.error('Missing required information:', { email, testId });
+        toast.error(language === 'en' ? 'Missing required information' : 'Thiếu thông tin cần thiết');
         return false;
       }
 
+      // Get type_id from testId (format: {name}-{team}-{type_id})
+      const parts = testId.split('-');
+      const type_id = parseInt(parts[parts.length - 1]);
+      
+      if (isNaN(type_id)) {
+        console.error('Invalid type_id from testId:', testId);
+        toast.error(language === 'en' ? 'Invalid test ID' : 'ID bài kiểm tra không hợp lệ');
+        return false;
+      }
+
+      const currentDate = new Date().toISOString();
+
+      // Prepare test history data
+      const testData = {
+        email: email.toLowerCase(),
+        full_name: email.split('@')[0], // Basic name from email
+        result,
+        correct_answers: score.correct,
+        total_questions: score.total,
+        type_id,
+        date_test: currentDate,
+        created_at: currentDate,
+        updated_at: currentDate
+      };
+
+      console.log('Saving test history:', testData);
+
+      // Insert the test history
       const { data, error } = await supabase
         .from('test_history')
-        .insert({
-          email,
-          result,
-          correct_answers: score.correct,
-          total_questions: score.total,
-          assessment_type: 'Custom',
-          date_test: new Date().toISOString(),
-        })
+        .insert([testData])
         .select();
 
       if (error) {
-        console.error('Error saving test history:', error);
-        toast.error(error.message || 'Error saving test results');
+        console.error('Database error:', error);
+        toast.error(language === 'en' ? 'Failed to save results' : 'Không thể lưu kết quả');
         return false;
       }
 
-      toast.success('Test results saved successfully');
+      console.log('Saved test history:', data);
+      toast.success(
+        language === 'en' 
+          ? 'Test results saved successfully' 
+          : 'Đã lưu kết quả bài kiểm tra'
+      );
       return true;
     } catch (error) {
-      console.error('Unexpected error:', error);
-      toast.error('An unexpected error occurred while saving test results');
+      console.error('Error in saveTestHistory:', error);
+      toast.error(
+        language === 'en' 
+          ? 'An error occurred while saving results' 
+          : 'Đã xảy ra lỗi khi lưu kết quả'
+      );
       return false;
     }
   };
