@@ -95,7 +95,12 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
 
   // Sửa lại phần useEffect cho realtime subscription
   useEffect(() => {
-    // Tạo channel cho realtime subscription
+    if (!selectedType) {
+      console.log('No type selected, skipping subscription...');
+      return;
+    }
+
+    console.log('Setting up realtime subscription...');
     const channel = supabase
       .channel('test_history_changes')
       .on(
@@ -110,37 +115,52 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
           
           try {
             // Fetch lại tổng số records
-            const { count } = await supabase
+            const { count, error: countError } = await supabase
               .from('test_history')
               .select('*', { count: 'exact', head: true })
               .eq('type_id', selectedType)
               .ilike('email', `%${searchQuery}%`);
 
+            if (countError) {
+              console.error('Error fetching count in subscription:', countError);
+              throw countError;
+            }
+
+            console.log('Updated total count:', count);
             if (count !== null) {
               setTotalCount(count);
             }
 
-            // Fetch lại data cho trang hiện tại với join để lấy title
+            // Fetch lại data cho trang hiện tại
+            console.log('Fetching updated data...');
             const { data, error } = await supabase
               .from('test_history')
               .select(`
                 *,
-                question_type:question_type(title)
+                question_type!inner (
+                  id,
+                  title
+                )
               `)
               .eq('type_id', selectedType)
               .ilike('email', `%${searchQuery}%`)
-              .order('date_test', { ascending: false })
+              .order('created_at', { ascending: false })
               .range(indexOfFirstItem, indexOfLastItem - 1);
 
             if (error) {
+              console.error('Error fetching data in subscription:', error);
               throw error;
             }
+
+            console.log('Fetched updated data:', data);
 
             if (data) {
               const mappedData = data.map(item => ({
                 ...item,
                 question_type_title: item.question_type?.title || 'Unknown'
               }));
+
+              console.log('Mapped updated data:', mappedData);
               setHistoryData(mappedData);
               toast.success(
                 language === 'en' 
@@ -149,7 +169,11 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
               );
             }
           } catch (error) {
-            console.error('Error updating realtime data:', error);
+            console.error('Error in subscription handler:', error);
+            if (error instanceof Error) {
+              console.error('Error message:', error.message);
+              console.error('Error stack:', error.stack);
+            }
             toast.error(
               language === 'en'
                 ? 'Failed to update test history'
@@ -160,13 +184,14 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
       );
 
     channel.subscribe((status) => {
+      console.log('Subscription status:', status);
       if (status === 'SUBSCRIBED') {
-        console.log('Subscribed to test_history changes');
+        console.log('Successfully subscribed to test_history changes');
       }
     });
 
     return () => {
-      console.log('Unsubscribing from test_history changes');
+      console.log('Cleaning up subscription...');
       supabase.removeChannel(channel);
     };
   }, [selectedType, searchQuery, indexOfFirstItem, indexOfLastItem, language]);
@@ -180,47 +205,64 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
           selectedType,
           searchQuery,
           indexOfFirstItem,
-          indexOfLastItem
+          indexOfLastItem,
+          currentPage,
+          rowsPerPage
         });
 
-        // Get the total count
+        // Get the total count first
         const { count, error: countError } = await supabase
           .from('test_history')
           .select('*', { count: 'exact', head: true })
-          .ilike('email', `%${searchQuery}%`)
-          .eq('type_id', selectedType);
+          .eq('type_id', selectedType)
+          .ilike('email', `%${searchQuery}%`);
 
         if (countError) {
+          console.error('Error fetching count:', countError);
           throw countError;
         }
 
+        console.log('Total count:', count);
         setTotalCount(count || 0);
 
-        // Fetch the paginated data with join to get question type title
+        // Then fetch the paginated data
+        console.log('Fetching paginated data...');
         const { data, error } = await supabase
           .from('test_history')
           .select(`
             *,
-            question_type:question_type(title)
+            question_type!inner (
+              id,
+              title
+            )
           `)
-          .ilike('email', `%${searchQuery}%`)
           .eq('type_id', selectedType)
-          .order('date_test', { ascending: false })
+          .ilike('email', `%${searchQuery}%`)
+          .order('created_at', { ascending: false })
           .range(indexOfFirstItem, indexOfLastItem - 1);
 
         if (error) {
+          console.error('Error fetching data:', error);
           throw error;
         }
 
+        console.log('Fetched data:', data);
+
         // Map the data to include the question type title
-        const mappedData = (data || []).map(item => ({
+        const mappedData = data.map(item => ({
           ...item,
           question_type_title: item.question_type?.title || 'Unknown'
         }));
 
+        console.log('Mapped data:', mappedData);
         setHistoryData(mappedData);
+
       } catch (error) {
-        console.error('Error fetching history:', error);
+        console.error('Detailed error in fetchHistory:', error);
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
         toast.error(
           language === 'en' 
             ? 'Failed to load test history' 
@@ -231,8 +273,13 @@ const QuestionHistoryManagement = ({ language }: QuestionHistoryManagementProps)
       }
     };
 
-    fetchHistory();
-  }, [language, currentPage, rowsPerPage, indexOfFirstItem, indexOfLastItem, selectedType, searchQuery]);
+    if (selectedType) {
+      console.log('Initiating fetch history...');
+      fetchHistory();
+    } else {
+      console.log('No type selected, skipping fetch...');
+    }
+  }, [language, currentPage, rowsPerPage, selectedType, searchQuery, indexOfFirstItem, indexOfLastItem]);
 
   // Format date function
   const formatDate = (dateString: string) => {

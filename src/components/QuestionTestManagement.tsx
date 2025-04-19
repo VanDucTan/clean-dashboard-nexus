@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import {
   Box,
   Button,
@@ -17,11 +17,6 @@ import {
   InputLabel,
 } from '@mui/material';
 import { toast } from 'react-toastify';
-
-const supabase = createClient(
-  'https://dyrhsseymnlqjyhwjgag.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5cmhzc2V5bW5scWp5aHdqZ2FnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1ODk3NDQsImV4cCI6MjA1OTE2NTc0NH0.uaTdmKfMw8gWk25fA85oFWQzXkHCf7d0c0DXpNxx4V8'
-);
 
 interface QuestionTestManagementProps {
   language?: 'en' | 'vi';
@@ -56,7 +51,7 @@ interface TestHistory {
   result: string;
   correct_answers: number;
   total_questions: number;
-  assessment_type: string;
+  type_id: number;
 }
 
 interface ResultScreenProps {
@@ -274,71 +269,6 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ languag
   const [authError, setAuthError] = useState<string | null>(null);
   const [hasStarted, setHasStarted] = useState(false);
 
-  const fetchTypeId = async (name: string, team: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('question_type')
-        .select('id')
-        .eq('name', name)
-        .eq('team', team)
-        .single();
-
-      if (error) throw error;
-      return data?.id;
-    } catch (error) {
-      console.error('Error fetching type ID:', error);
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    const loadQuestions = async () => {
-      if (testId) {
-        // Format: {name}-{team}-{type_id}
-        const parts = testId.split('-');
-        if (parts.length >= 3) {
-          const typeId = parts[parts.length - 1];
-          if (typeId && !isNaN(Number(typeId))) {
-            await fetchQuestions(parseInt(typeId));
-          } else {
-            toast.error('ID không hợp lệ');
-          }
-        }
-      }
-    };
-    loadQuestions();
-  }, [testId]);
-
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newEmail = event.target.value;
-    setEmail(newEmail);
-    setIsEmailValid(validateEmail(newEmail));
-    setAuthError(null); // Clear error when email changes
-  };
-
-  const fetchQuestions = async (typeId: number) => {
-    try {
-      const { data: questions, error } = await supabase
-        .from('question')
-        .select('*')
-        .eq('type_id', typeId);
-
-      if (error) throw error;
-
-      if (questions) {
-        setQuestions(questions);
-        await fetchAnswersForQuestions(questions);
-      }
-    } catch (error) {
-      toast.error('Error fetching questions');
-    }
-  };
-
   const fetchAnswersForQuestions = async (questions: Question[]) => {
     try {
       const questionIds = questions.map(q => q.id);
@@ -362,6 +292,54 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ languag
     } catch (error) {
       toast.error('Error fetching answers');
     }
+  };
+
+  const fetchQuestions = useCallback(async (typeId: number) => {
+    try {
+      const { data: questions, error } = await supabase
+        .from('question')
+        .select('*')
+        .eq('type_id', typeId);
+
+      if (error) throw error;
+
+      if (questions) {
+        setQuestions(questions);
+        await fetchAnswersForQuestions(questions);
+      }
+    } catch (error) {
+      toast.error('Error fetching questions');
+    }
+  }, []);
+
+  const loadQuestions = useCallback(async () => {
+    if (testId) {
+      const parts = testId.split('-');
+      if (parts.length >= 3) {
+        const typeId = parts[parts.length - 1];
+        if (typeId && !isNaN(Number(typeId))) {
+          await fetchQuestions(parseInt(typeId));
+        } else {
+          toast.error('ID không hợp lệ');
+        }
+      }
+    }
+  }, [testId, fetchQuestions]);
+
+  useEffect(() => {
+    loadQuestions();
+  }, [loadQuestions]);
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = event.target.value;
+    setEmail(newEmail);
+    setIsEmailValid(validateEmail(newEmail));
+    setAuthError(null); // Clear error when email changes
   };
 
   const checkEmailAuthorization = async (email: string, questionTypeId: number) => {
@@ -462,6 +440,7 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ languag
 
   const saveTestHistory = async (score: { correct: number; total: number }) => {
     try {
+      console.log('Starting saveTestHistory with score:', score);
       const result = score.correct >= score.total * 0.8 ? 'passed' : 'failed';
       
       if (!email || !testId) {
@@ -470,78 +449,109 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ languag
         return false;
       }
 
-      // Get type_id from testId (format: {name}-{team}-{type_id})
+      // Get the question type from testId
       const parts = testId.split('-');
-      const type_id = parseInt(parts[parts.length - 1]);
+      const typeId = parseInt(parts[parts.length - 1]); // Get the last part as type_id
       
-      if (isNaN(type_id)) {
-        console.error('Invalid type_id from testId:', testId);
+      console.log('Parsed test ID parts:', parts);
+      console.log('Extracted type_id:', typeId);
+      
+      if (isNaN(typeId)) {
+        console.error('Invalid type_id:', parts);
         toast.error(language === 'en' ? 'Invalid test ID' : 'ID bài kiểm tra không hợp lệ');
         return false;
       }
 
       const currentDate = new Date().toISOString();
 
-      // Prepare test history data
+      // Prepare test history data - matching exact database structure
       const testData = {
+        date_test: currentDate,
         email: email.toLowerCase(),
-        full_name: email.split('@')[0], // Basic name from email
-        result,
+        full_name: email.split('@')[0],
+        result: result,
         correct_answers: score.correct,
         total_questions: score.total,
-        type_id,
-        date_test: currentDate,
+        type_id: typeId,
         created_at: currentDate,
         updated_at: currentDate
       };
 
-      console.log('Saving test history:', testData);
+      console.log('Prepared test data:', testData);
 
-      // Insert the test history
-      const { data, error } = await supabase
+      // Simple insert without select or onConflict
+      const { error } = await supabase
         .from('test_history')
-        .insert([testData])
-        .select();
+        .insert([testData]);
 
       if (error) {
-        console.error('Database error:', error);
+        console.error('Database error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         toast.error(language === 'en' ? 'Failed to save results' : 'Không thể lưu kết quả');
         return false;
       }
 
-      console.log('Saved test history:', data);
-      toast.success(
-        language === 'en' 
-          ? 'Test results saved successfully' 
-          : 'Đã lưu kết quả bài kiểm tra'
-      );
+      console.log('Successfully saved test history');
+      toast.success(language === 'en' ? 'Test results saved successfully' : 'Đã lưu kết quả bài kiểm tra');
       return true;
     } catch (error) {
-      console.error('Error in saveTestHistory:', error);
-      toast.error(
-        language === 'en' 
-          ? 'An error occurred while saving results' 
-          : 'Đã xảy ra lỗi khi lưu kết quả'
-      );
+      console.error('Detailed error in saveTestHistory:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+      toast.error(language === 'en' ? 'An error occurred while saving results' : 'Đã xảy ra lỗi khi lưu kết quả');
       return false;
     }
   };
 
   const handleSubmit = async () => {
-    // Check if all questions are answered
-    const unansweredQuestions = questions.filter(q => !selectedAnswers[q.id]);
-    if (unansweredQuestions.length > 0) {
-      toast.error(t.selectAnswer);
-      return;
-    }
+    try {
+      // Check if all questions are answered
+      const unansweredQuestions = questions.filter(q => !selectedAnswers[q.id]);
+      if (unansweredQuestions.length > 0) {
+        toast.error(t.selectAnswer);
+        return;
+      }
 
-    const score = calculateScore();
-    setTestScore(score);
-    setShowResults(true); // Immediately show the result screen
+      // Calculate score
+      const score = calculateScore();
+      console.log('Calculated test score:', score);
 
-    const saved = await saveTestHistory(score);
-    if (!saved) {
-      toast.error('Failed to save test results');
+      // Show results immediately
+      setTestScore(score);
+      setShowResults(true);
+
+      // Try to save the test history in the background
+      try {
+        const saved = await saveTestHistory(score);
+        if (!saved) {
+          console.error('Failed to save test history');
+          toast.error(
+            language === 'en'
+              ? 'Your results are displayed but could not be saved'
+              : 'Kết quả được hiển thị nhưng không thể lưu vào hệ thống'
+          );
+        }
+      } catch (saveError) {
+        console.error('Error saving test history:', saveError);
+        toast.error(
+          language === 'en'
+            ? 'Your results are displayed but could not be saved'
+            : 'Kết quả được hiển thị nhưng không thể lưu vào hệ thống'
+        );
+      }
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+      toast.error(
+        language === 'en'
+          ? 'An error occurred while submitting the test'
+          : 'Đã xảy ra lỗi khi nộp bài'
+      );
     }
   };
 

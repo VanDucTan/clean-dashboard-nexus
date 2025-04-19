@@ -24,7 +24,8 @@ import {
   FileSpreadsheet,
   CalendarClock,
   Scale,
-  Settings
+  Settings,
+  UserCog
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import LogoutDialog from "./LogoutDialog";
@@ -135,6 +136,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       questions: "Questions",
       history: "History",
       logout: "Log Out",
+      memberInfo: "Member Information",
     },
     vi: {
       dashboard: "Bảng điều khiển",
@@ -151,6 +153,7 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       questions: "Câu hỏi",
       history: "Lịch sử",
       logout: "Đăng xuất",
+      memberInfo: "Thông tin thành viên",
     }
   };
 
@@ -164,16 +167,30 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       titleVi: "Trang chủ"
     },
     {
-      id: "accounts",
-      icon: Users,
-      titleEn: "Accounts",
-      titleVi: "Tài khoản"
+      id: "member-info",
+      icon: UserCog,
+      titleEn: "Member Information",
+      titleVi: "Thông tin thành viên"
     },
     {
-      id: "roles",
-      icon: UserCircle,
-      titleEn: "Roles",
-      titleVi: "Vai trò"
+      id: "administrator",
+      icon: User,
+      titleEn: "Administrator",
+      titleVi: "Quản trị viên",
+      children: [
+        {
+          id: "accounts",
+          icon: Users,
+          titleEn: "Accounts",
+          titleVi: "Tài khoản"
+        },
+        {
+          id: "roles",
+          icon: Shield,
+          titleEn: "Roles",
+          titleVi: "Vai trò"
+        }
+      ]
     },
     {
       id: "teams",
@@ -182,28 +199,56 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
       titleVi: "Nhóm"
     },
     {
-      id: "applies",
-      icon: FileSpreadsheet,
-      titleEn: "Applies",
-      titleVi: "Ứng tuyển"
+      id: "recruitment",
+      icon: Briefcase,
+      titleEn: "Recruitment",
+      titleVi: "Tuyển dụng",
+      children: [
+        {
+          id: "applies",
+          icon: FileSpreadsheet,
+          titleEn: "Applies",
+          titleVi: "Đơn ứng tuyển"
+        },
+        {
+          id: "interview",
+          icon: CalendarClock,
+          titleEn: "Interview",
+          titleVi: "Phỏng vấn"
+        },
+        {
+          id: "rule-assessment",
+          icon: Scale,
+          titleEn: "Rule Assessment",
+          titleVi: "Đánh giá quy tắc"
+        }
+      ]
     },
     {
-      id: "interview",
-      icon: CalendarClock,
-      titleEn: "Interview",
-      titleVi: "Phỏng vấn"
-    },
-    {
-      id: "rule-assessment",
-      icon: Scale,
-      titleEn: "Rule Assessment",
-      titleVi: "Đánh giá quy tắc"
-    },
-    {
-      id: "settings",
-      icon: Settings,
-      titleEn: "Settings",
-      titleVi: "Cài đặt"
+      id: "qa",
+      icon: HelpCircle,
+      titleEn: "Q&A",
+      titleVi: "Hỏi & Đáp",
+      children: [
+        {
+          id: "type",
+          icon: FileType,
+          titleEn: "Type",
+          titleVi: "Loại"
+        },
+        {
+          id: "questions",
+          icon: HelpCircle,
+          titleEn: "Questions",
+          titleVi: "Câu hỏi"
+        },
+        {
+          id: "history",
+          icon: History,
+          titleEn: "History",
+          titleVi: "Lịch sử"
+        }
+      ]
     }
   ];
 
@@ -237,7 +282,13 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
             onClick={() => setActiveItem("dashboard")}
           />
 
-          {/* Administrator section with nested items */}
+          <SidebarItem
+            icon={UserCog}
+            label={isCollapsed ? "" : (language === 'en' ? "Member Information" : "Thông tin thành viên")}
+            active={activeItem === "member-info"}
+            onClick={() => setActiveItem("member-info")}
+          />
+
           <div>
             <SidebarItem
               icon={User}
@@ -252,13 +303,13 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
               <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
                 <SidebarItemNested
                   icon={Users}
-                  label={t.accounts}
+                  label={language === 'en' ? "Accounts" : "Tài khoản"}
                   active={activeItem === "accounts"}
                   onClick={() => setActiveItem("accounts")}
                 />
                 <SidebarItemNested
                   icon={Shield}
-                  label={t.roles}
+                  label={language === 'en' ? "Roles" : "Vai trò"}
                   active={activeItem === "roles"}
                   onClick={() => setActiveItem("roles")}
                 />
@@ -266,15 +317,13 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
             )}
           </div>
 
-          {/* Teams section as a standalone item */}
           <SidebarItem
-            icon={Users}
+            icon={Users2}
             label={isCollapsed ? "" : t.teams}
             active={activeItem === "teams"}
             onClick={() => setActiveItem("teams")}
           />
 
-          {/* Recruitment section with nested items */}
           <div>
             <SidebarItem
               icon={Briefcase}
@@ -288,20 +337,20 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
             {!isCollapsed && expandedSections.recruitment && (
               <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
                 <SidebarItemNested
-                  icon={FileText}
-                  label={t.applies}
+                  icon={FileSpreadsheet}
+                  label={language === 'en' ? "Applies" : "Đơn ứng tuyển"}
                   active={activeItem === "applies"}
                   onClick={() => setActiveItem("applies")}
                 />
                 <SidebarItemNested
-                  icon={MessageSquare}
-                  label={t.interview}
+                  icon={CalendarClock}
+                  label={language === 'en' ? "Interview" : "Phỏng vấn"}
                   active={activeItem === "interview"}
                   onClick={() => setActiveItem("interview")}
                 />
                 <SidebarItemNested
-                  icon={FileText}
-                  label={t.ruleAssessment}
+                  icon={Scale}
+                  label={language === 'en' ? "Rule Assessment" : "Đánh giá quy tắc"}
                   active={activeItem === "rule-assessment"}
                   onClick={() => setActiveItem("rule-assessment")}
                 />
@@ -309,7 +358,6 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
             )}
           </div>
 
-          {/* Q&A section with nested items */}
           <div>
             <SidebarItem
               icon={HelpCircle}
@@ -324,19 +372,19 @@ const Sidebar = ({ activeItem, setActiveItem, language, isCollapsed, toggleSideb
               <div className="mt-1 space-y-1 overflow-hidden transition-all duration-300 ease-in-out">
                 <SidebarItemNested
                   icon={FileType}
-                  label={t.type}
+                  label={language === 'en' ? "Type" : "Loại"}
                   active={activeItem === "type"}
                   onClick={() => setActiveItem("type")}
                 />
                 <SidebarItemNested
                   icon={HelpCircle}
-                  label={t.questions}
+                  label={language === 'en' ? "Questions" : "Câu hỏi"}
                   active={activeItem === "questions"}
                   onClick={() => setActiveItem("questions")}
                 />
                 <SidebarItemNested
                   icon={History}
-                  label={t.history}
+                  label={language === 'en' ? "History" : "Lịch sử"}
                   active={activeItem === "history"}
                   onClick={() => setActiveItem("history")}
                 />
