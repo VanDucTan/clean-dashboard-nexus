@@ -12,6 +12,7 @@ import RuleAssessmentManagement from "@/components/RuleAssessmentManagement";
 import QuestionTypeManagement from "@/components/QuestionTypeManagement";
 import QuestionManagement from "@/components/QuestionManagement";
 import QuestionHistoryManagement from "@/components/QuestionHistoryManagement";
+import MemberInformationManagement from "@/components/MemberInformationManagement";
 import { cn } from "@/lib/utils";
 
 const Index = () => {
@@ -53,6 +54,7 @@ const Index = () => {
       "type": { en: "Type", vi: "Loại" },
       "questions": { en: "Questions", vi: "Câu hỏi" },
       "history": { en: "History", vi: "Lịch sử" },
+      "member-info": { en: "Member Information", vi: "Thông tin thành viên" },
     };
     
     return translations[id] 
@@ -102,6 +104,8 @@ const Index = () => {
         return <QuestionManagement language={language} />;
       case "history":
         return <QuestionHistoryManagement language={language} />;
+      case "member-info":
+        return <MemberInformationManagement language={language} />;
       default:
         return <Placeholder 
           title={getTranslatedTitle(activeItem)} 
