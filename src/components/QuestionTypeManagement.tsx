@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import CustomPagination from "@/components/ui/custom-pagination";
+import { supabase } from '@/lib/supabase';
 
 interface QuestionTypeManagementProps {
   language: 'en' | 'vi';
@@ -52,12 +53,6 @@ interface Team {
   name: string;
   description: string | null;
 }
-
-// Initialize Supabase client
-const supabase = createClient(
-  'https://dyrhsseymnlqjyhwjgag.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5cmhzc2V5bW5scWp5aHdqZ2FnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM1ODk3NDQsImV4cCI6MjA1OTE2NTc0NH0.uaTdmKfMw8gWk25fA85oFWQzXkHCf7d0c0DXpNxx4V8'
-);
 
 const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
   const [searchQuery, setSearchQuery] = useState('');

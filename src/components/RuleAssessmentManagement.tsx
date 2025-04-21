@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { Search, Edit2, Plus, Download, Upload, Trash2 } from "lucide-react";
 import {
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import CustomPagination from "@/components/ui/custom-pagination";
+import { supabase } from '@/lib/supabase';
 
 interface RuleAssessmentManagementProps {
   language: 'en' | 'vi';
@@ -44,11 +45,13 @@ interface Assessment {
   interviewTime: string;
 }
 
-// Initialize Supabase client
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+interface RuleAssessmentRecord {
+  id: number;
+  email: string;
+  full_name: string;
+  info_security: boolean;
+  test_history: TestHistoryRecord[];
+}
 
 const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,12 +66,8 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Fetch assessments from Supabase
-  useEffect(() => {
-    fetchAssessments();
-  }, []);
-
-  const fetchAssessments = async () => {
+  // Wrap fetchAssessments in useCallback
+  const fetchAssessments = useCallback(async () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -88,7 +87,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           email: item.email,
           fullName: item.full_name,
           result: item.result,
-          interviewTime: item.interview_time
         }));
 
         setAssessments(transformedData);
@@ -103,7 +101,12 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [language]);
+
+  // Update useEffect to include fetchAssessments in dependency array
+  useEffect(() => {
+    fetchAssessments();
+  }, [fetchAssessments]);
 
   // Handle search
   const filteredAssessments = assessments.filter(assessment => 
@@ -145,7 +148,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
             throw error;
           }
 
-          // Refresh data after successful import
           await fetchAssessments();
           toast({
             title: language === 'en' ? 'Success' : 'Thành công',
@@ -187,7 +189,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
   const handleSaveEdit = async () => {
     if (editingAssessment) {
       try {
-        // Transform data for Supabase
         const updateData = {
           info_security: editingAssessment.infoSecurity,
           email: editingAssessment.email,
@@ -206,7 +207,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           throw error;
         }
 
-        // Refresh data after successful update
         await fetchAssessments();
         setIsEditDialogOpen(false);
         setEditingAssessment(null);
@@ -243,7 +243,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           throw error;
         }
 
-        // Refresh data after successful deletion
         await fetchAssessments();
         setIsDeleteDialogOpen(false);
         setDeletingAssessment(null);
@@ -313,10 +312,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       showing: "Showing",
       of: "of",
       perPage: "per page",
-      rowsPerPage: "Rows per page",
       editAssessment: "Edit Assessment",
       yes: "Yes",
       no: "No",
+      pass: "Pass",
+      fail: "Fail",
       deleteAssessment: "Delete Assessment",
       deleteConfirmation: "Are you sure you want to delete this assessment?",
       deleteWarning: "This action cannot be undone.",
@@ -349,10 +349,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       showing: "Hiển thị",
       of: "trong số",
       perPage: "mỗi trang",
-      rowsPerPage: "Hàng mỗi trang",
       editAssessment: "Chỉnh sửa đánh giá",
       yes: "Có",
       no: "Không",
+      pass: "Đạt",
+      fail: "Không đạt",
       deleteAssessment: "Xóa đánh giá",
       deleteConfirmation: "Bạn có chắc chắn muốn xóa đánh giá này?",
       deleteWarning: "Hành động này không thể hoàn tác.",
@@ -501,7 +502,7 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{t[language].editAssessment}</DialogTitle>
           </DialogHeader>

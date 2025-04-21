@@ -32,6 +32,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
 import CustomPagination from "@/components/ui/custom-pagination";
+import { supabase } from '@/lib/supabase';
 
 interface InterviewManagementProps {
   language: 'en' | 'vi';
@@ -48,12 +49,6 @@ interface Interview {
   meetingLink: string;
   registrationDate: string;
 }
-
-// Initialize Supabase client
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 // Mock data for demonstration
 const mockInterviews = [
