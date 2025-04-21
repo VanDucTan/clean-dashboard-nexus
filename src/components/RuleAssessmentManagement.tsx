@@ -38,18 +38,11 @@ interface RuleAssessmentManagementProps {
 
 interface Assessment {
   id: number;
+  infoSecurity: boolean;
   email: string;
   fullName: string;
-  infoSecurity: boolean;
-  result: boolean;
-  passedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface TestHistoryRecord {
-  created_at: string;
-  result: boolean;
+  result: string;
+  interviewTime: string;
 }
 
 interface RuleAssessmentRecord {
@@ -90,13 +83,10 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
         // Transform the data to match our Assessment interface
         const transformedData = data.map(item => ({
           id: item.id,
+          infoSecurity: item.info_security,
           email: item.email,
           fullName: item.full_name,
-          infoSecurity: item.info_security,
           result: item.result,
-          passedAt: item.passed_at,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at
         }));
 
         setAssessments(transformedData);
@@ -142,11 +132,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           
           // Transform data for Supabase
           const transformedData = importedData.map((item: Assessment) => ({
+            info_security: item.infoSecurity,
             email: item.email,
             full_name: item.fullName,
-            info_security: item.infoSecurity,
             result: item.result,
-            passed_at: item.passedAt
+            interview_time: item.interviewTime
           }));
 
           const { data, error } = await supabase
@@ -200,11 +190,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
     if (editingAssessment) {
       try {
         const updateData = {
+          info_security: editingAssessment.infoSecurity,
           email: editingAssessment.email,
           full_name: editingAssessment.fullName,
-          info_security: editingAssessment.infoSecurity,
           result: editingAssessment.result,
-          passed_at: editingAssessment.passedAt
+          interview_time: editingAssessment.interviewTime
         };
 
         const { data, error } = await supabase
@@ -277,19 +267,17 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
   const paginatedAssessments = filteredAssessments.slice(indexOfFirstAssessment, indexOfLastAssessment);
   const totalPages = Math.ceil(filteredAssessments.length / rowsPerPage);
 
-  // Format date and time
-  const formatDateTime = (dateTimeString: string | null) => {
-    if (!dateTimeString) return '';
+  // Add a helper function to format date and time
+  const formatDateTime = (dateTimeString: string) => {
     try {
       const date = new Date(dateTimeString);
-      return date.toLocaleString(language === 'en' ? 'en-US' : 'vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${hours}:${minutes} ${day}/${month}/${year}`;
     } catch (error) {
       return dateTimeString;
     }
@@ -303,11 +291,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       import: "Import",
       export: "Export",
       addWebhook: "Add Webhook",
+      infoSecurity: "Information Security",
       email: "Email",
       fullName: "Full Name",
-      infoSecurity: "Information Security",
       result: "Result",
-      passedAt: "Passed At",
+      interviewTime: "Interview Time",
       actions: "Actions",
       createWebhook: "Create Webhook",
       webhookDescription: "Configure a new webhook for notifications",
@@ -340,11 +328,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       import: "Nhập",
       export: "Xuất",
       addWebhook: "Thêm Webhook",
+      infoSecurity: "Bảo mật thông tin",
       email: "Email",
       fullName: "Họ và tên",
-      infoSecurity: "Bảo mật thông tin",
       result: "Kết quả",
-      passedAt: "Thời gian đạt",
+      interviewTime: "Thời gian phỏng vấn",
       actions: "Thao tác",
       createWebhook: "Tạo Webhook",
       webhookDescription: "Cấu hình webhook mới cho thông báo",
@@ -420,11 +408,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="whitespace-nowrap">{t[language].infoSecurity}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].email}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].fullName}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].infoSecurity}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].result}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].passedAt}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].interviewTime}</TableHead>
                 <TableHead className="whitespace-nowrap text-right">{t[language].actions}</TableHead>
               </TableRow>
             </TableHeader>
@@ -446,17 +434,13 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
               ) : (
                 paginatedAssessments.map((assessment) => (
                   <TableRow key={assessment.id}>
-                    <TableCell className="whitespace-nowrap">{assessment.email}</TableCell>
-                    <TableCell className="whitespace-nowrap">{assessment.fullName}</TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
                       {assessment.infoSecurity ? t[language].yes : t[language].no}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {assessment.result ? t[language].pass : t[language].fail}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {formatDateTime(assessment.passedAt)}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.email}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.fullName}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.result}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDateTime(assessment.interviewTime)}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(assessment)}>
@@ -572,38 +556,28 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
               </div>
 
               <div className="grid gap-2">
-                <Label>{t[language].result}</Label>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="resultPass"
-                      checked={editingAssessment?.result === true}
-                      onChange={() => setEditingAssessment({ ...editingAssessment!, result: true })}
-                    />
-                    <Label htmlFor="resultPass">{t[language].pass}</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="resultFail"
-                      checked={editingAssessment?.result === false}
-                      onChange={() => setEditingAssessment({ ...editingAssessment!, result: false })}
-                    />
-                    <Label htmlFor="resultFail">{t[language].fail}</Label>
-                  </div>
-                </div>
+                <Label htmlFor="result">
+                  {t[language].result}
+                </Label>
+                <Input
+                  id="result"
+                  value={editingAssessment?.result || ''}
+                  disabled
+                  readOnly
+                  className="bg-muted"
+                />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="passedAt">
-                  {t[language].passedAt}
+                <Label htmlFor="interviewTime">
+                  {t[language].interviewTime}
                 </Label>
                 <Input
-                  id="passedAt"
-                  type="datetime-local"
-                  value={editingAssessment?.passedAt?.split('.')[0] || ''}
-                  onChange={(e) => setEditingAssessment({ ...editingAssessment!, passedAt: e.target.value })}
+                  id="interviewTime"
+                  value={formatDateTime(editingAssessment?.interviewTime || '')}
+                  disabled
+                  readOnly
+                  className="bg-muted"
                 />
               </div>
             </div>
