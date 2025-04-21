@@ -37,15 +37,11 @@ interface RuleAssessmentManagementProps {
 
 interface Assessment {
   id: number;
-  firstDateTest: string;
   infoSecurity: boolean;
   email: string;
   fullName: string;
-  totalTested: number;
-  totalPassed: number;
-  firstTimePassed: string;
-  lastTimePassed: string;
-  lastTimeTested: string;
+  result: string;
+  interviewTime: string;
 }
 
 // Initialize Supabase client
@@ -88,15 +84,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
         // Transform the data to match our Assessment interface
         const transformedData = data.map(item => ({
           id: item.id,
-          firstDateTest: item.first_date_test,
           infoSecurity: item.info_security,
           email: item.email,
           fullName: item.full_name,
-          totalTested: item.total_tested,
-          totalPassed: item.total_passed,
-          firstTimePassed: item.first_time_passed,
-          lastTimePassed: item.last_time_passed,
-          lastTimeTested: item.last_time_tested
+          result: item.result,
+          interviewTime: item.interview_time
         }));
 
         setAssessments(transformedData);
@@ -137,15 +129,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           
           // Transform data for Supabase
           const transformedData = importedData.map((item: Assessment) => ({
-            first_date_test: item.firstDateTest,
             info_security: item.infoSecurity,
             email: item.email,
             full_name: item.fullName,
-            total_tested: item.totalTested,
-            total_passed: item.totalPassed,
-            first_time_passed: item.firstTimePassed,
-            last_time_passed: item.lastTimePassed,
-            last_time_tested: item.lastTimeTested
+            result: item.result,
+            interview_time: item.interviewTime
           }));
 
           const { data, error } = await supabase
@@ -201,15 +189,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       try {
         // Transform data for Supabase
         const updateData = {
-          first_date_test: editingAssessment.firstDateTest,
           info_security: editingAssessment.infoSecurity,
           email: editingAssessment.email,
           full_name: editingAssessment.fullName,
-          total_tested: editingAssessment.totalTested,
-          total_passed: editingAssessment.totalPassed,
-          first_time_passed: editingAssessment.firstTimePassed,
-          last_time_passed: editingAssessment.lastTimePassed,
-          last_time_tested: editingAssessment.lastTimeTested
+          result: editingAssessment.result,
+          interview_time: editingAssessment.interviewTime
         };
 
         const { data, error } = await supabase
@@ -284,18 +268,17 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
   const paginatedAssessments = filteredAssessments.slice(indexOfFirstAssessment, indexOfLastAssessment);
   const totalPages = Math.ceil(filteredAssessments.length / rowsPerPage);
 
-  // Add a helper function to format timestamps
+  // Add a helper function to format date and time
   const formatDateTime = (dateTimeString: string) => {
     try {
       const date = new Date(dateTimeString);
-      return date.toLocaleString(language === 'en' ? 'en-US' : 'vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${hours}:${minutes} ${day}/${month}/${year}`;
     } catch (error) {
       return dateTimeString;
     }
@@ -309,15 +292,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       import: "Import",
       export: "Export",
       addWebhook: "Add Webhook",
-      firstDateTest: "First Date Test",
       infoSecurity: "Information Security",
       email: "Email",
       fullName: "Full Name",
-      totalTested: "Total Tested",
-      totalPassed: "Total Passed",
-      firstTimePassed: "First Time Passed",
-      lastTimePassed: "Last Time Passed",
-      lastTimeTested: "Last Time Tested",
+      result: "Result",
+      interviewTime: "Interview Time",
       actions: "Actions",
       createWebhook: "Create Webhook",
       webhookDescription: "Configure a new webhook for notifications",
@@ -349,15 +328,11 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
       import: "Nhập",
       export: "Xuất",
       addWebhook: "Thêm Webhook",
-      firstDateTest: "Ngày kiểm tra đầu tiên",
       infoSecurity: "Bảo mật thông tin",
       email: "Email",
       fullName: "Họ và tên",
-      totalTested: "Tổng số lần kiểm tra",
-      totalPassed: "Tổng số lần đạt",
-      firstTimePassed: "Lần đầu đạt",
-      lastTimePassed: "Lần cuối đạt",
-      lastTimeTested: "Lần kiểm tra cuối",
+      result: "Kết quả",
+      interviewTime: "Thời gian phỏng vấn",
       actions: "Thao tác",
       createWebhook: "Tạo Webhook",
       webhookDescription: "Cấu hình webhook mới cho thông báo",
@@ -432,22 +407,18 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="whitespace-nowrap">{t[language].firstDateTest}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].infoSecurity}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].email}</TableHead>
                 <TableHead className="whitespace-nowrap">{t[language].fullName}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].totalTested}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].totalPassed}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].firstTimePassed}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].lastTimePassed}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].lastTimeTested}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].result}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].interviewTime}</TableHead>
                 <TableHead className="whitespace-nowrap text-right">{t[language].actions}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     <div className="flex justify-center items-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                     </div>
@@ -455,22 +426,20 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
                 </TableRow>
               ) : paginatedAssessments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-10">
+                  <TableCell colSpan={6} className="text-center py-10">
                     {language === 'en' ? 'No assessments found' : 'Không tìm thấy đánh giá nào'}
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedAssessments.map((assessment) => (
                   <TableRow key={assessment.id}>
-                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.firstDateTest}</TableCell>
-                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.infoSecurity ? t[language].yes : t[language].no}</TableCell>
+                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
+                      {assessment.infoSecurity ? t[language].yes : t[language].no}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.email}</TableCell>
                     <TableCell className="whitespace-nowrap max-w-[200px] truncate">{assessment.fullName}</TableCell>
-                    <TableCell className="whitespace-nowrap">{assessment.totalTested}</TableCell>
-                    <TableCell className="whitespace-nowrap">{assessment.totalPassed}</TableCell>
-                    <TableCell className="whitespace-nowrap">{assessment.firstTimePassed}</TableCell>
-                    <TableCell className="whitespace-nowrap">{assessment.lastTimePassed}</TableCell>
-                    <TableCell className="whitespace-nowrap">{assessment.lastTimeTested}</TableCell>
+                    <TableCell className="whitespace-nowrap">{assessment.result}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDateTime(assessment.interviewTime)}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(assessment)}>
@@ -540,18 +509,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
           <div className="space-y-4 py-4">
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="firstDateTest">
-                  {t[language].firstDateTest} <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="firstDateTest"
-                  type="datetime-local"
-                  value={editingAssessment?.firstDateTest || ''}
-                  onChange={(e) => setEditingAssessment({ ...editingAssessment!, firstDateTest: e.target.value })}
-                />
-              </div>
-
-              <div className="grid gap-2">
                 <Label htmlFor="email">
                   {t[language].email} <span className="text-red-500">*</span>
                 </Label>
@@ -570,69 +527,6 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
                   id="fullName"
                   value={editingAssessment?.fullName || ''}
                   onChange={(e) => setEditingAssessment({ ...editingAssessment!, fullName: e.target.value })}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="totalTested">
-                  {t[language].totalTested} <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="totalTested"
-                  type="number"
-                  value={editingAssessment?.totalTested || 0}
-                  onChange={(e) => setEditingAssessment({ ...editingAssessment!, totalTested: parseInt(e.target.value) })}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="totalPassed">
-                  {t[language].totalPassed} <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="totalPassed"
-                  type="number"
-                  value={editingAssessment?.totalPassed || 0}
-                  onChange={(e) => setEditingAssessment({ ...editingAssessment!, totalPassed: parseInt(e.target.value) })}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="firstTimePassed">
-                  {t[language].firstTimePassed}
-                </Label>
-                <Input
-                  id="firstTimePassed"
-                  value={formatDateTime(editingAssessment?.firstTimePassed || '')}
-                  readOnly
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="lastTimePassed">
-                  {t[language].lastTimePassed}
-                </Label>
-                <Input
-                  id="lastTimePassed"
-                  value={formatDateTime(editingAssessment?.lastTimePassed || '')}
-                  readOnly
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="lastTimeTested">
-                  {t[language].lastTimeTested}
-                </Label>
-                <Input
-                  id="lastTimeTested"
-                  value={formatDateTime(editingAssessment?.lastTimeTested || '')}
-                  readOnly
-                  disabled
-                  className="bg-muted"
                 />
               </div>
 
@@ -658,6 +552,32 @@ const RuleAssessmentManagement = ({ language }: RuleAssessmentManagementProps) =
                     <Label htmlFor="securityNo">{t[language].no}</Label>
                   </div>
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="result">
+                  {t[language].result}
+                </Label>
+                <Input
+                  id="result"
+                  value={editingAssessment?.result || ''}
+                  disabled
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="interviewTime">
+                  {t[language].interviewTime}
+                </Label>
+                <Input
+                  id="interviewTime"
+                  value={formatDateTime(editingAssessment?.interviewTime || '')}
+                  disabled
+                  readOnly
+                  className="bg-muted"
+                />
               </div>
             </div>
           </div>

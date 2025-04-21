@@ -338,6 +338,22 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
     }
   };
 
+  // Add a helper function to format date and time
+  const formatDateTime = (dateTimeString: string) => {
+    try {
+      const date = new Date(dateTimeString);
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${hours}:${minutes} ${day}/${month}/${year}`;
+    } catch (error) {
+      return dateTimeString;
+    }
+  };
+
   // Translations
   const t = {
     en: {
@@ -349,7 +365,7 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
       email: "Email",
       fullName: "Full Name",
       infoSecurity: "Information Security",
-      dateInterview: "Date Interview",
+      dateInterview: "Interview Time",
       result: "Result",
       positionAssign: "Position Assign",
       meetingLink: "Link Meeting",
@@ -505,7 +521,7 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
                   <TableCell className="whitespace-nowrap max-w-[200px] truncate">{interview.email}</TableCell>
                   <TableCell className="whitespace-nowrap max-w-[200px] truncate">{interview.fullName}</TableCell>
                   <TableCell className="text-center whitespace-nowrap">{interview.infoSecurity ? t[language].yes : t[language].no}</TableCell>
-                  <TableCell className="whitespace-nowrap">{interview.dateInterview}</TableCell>
+                  <TableCell className="whitespace-nowrap">{formatDateTime(interview.dateInterview)}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     <Select
                       value={interview.result}
