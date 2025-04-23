@@ -600,45 +600,20 @@ const Accounts = ({ language }: AccountsProps) => {
           </TableBody>
         </Table>
       </div>
-
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Select
-            value={rowsPerPage.toString()}
-            onValueChange={(value) => {
-              setRowsPerPage(parseInt(value));
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize} {t.perPage}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">
-            {t.showing} {((currentPage - 1) * rowsPerPage) + 1}-
-            {Math.min(currentPage * rowsPerPage, filteredAccounts.length)} {t.of}{" "}
-            {filteredAccounts.length}
-          </span>
-        </div>
-        <CustomPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setCurrentPage}
-          onRowsPerPageChange={setRowsPerPage}
-          translations={{
-            showing: t.showing,
-            of: t.of,
-            perPage: t.perPage
-          }}
-        />
+      <div className="flex justify-end">
+      <CustomPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={setRowsPerPage}
+        totalItems={filteredAccounts.length}
+        translations={{
+          showing: t.showing,
+          of: t.of,
+          perPage: t.perPage
+        }}
+      />
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

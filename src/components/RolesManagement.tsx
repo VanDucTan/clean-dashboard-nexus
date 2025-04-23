@@ -108,6 +108,7 @@ interface RolesManagementProps {
     noRoles: string;
     showing: string;
     perPage: string;
+    rowsPerPage: string;  // Added this property
     editRole: string;
     create: string;
     searchPlaceholder: string;
@@ -769,47 +770,24 @@ const RolesManagement = ({ language, text }: RolesManagementProps) => {
           </TableBody>
         </Table>
       </div>
-
-      {/* Pagination */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Select
-            value={rowsPerPage.toString()}
-            onValueChange={(value) => {
-              setRowsPerPage(parseInt(value));
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize} {text.perPage}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">
-            {text.showing} {((currentPage - 1) * rowsPerPage) + 1}-
-            {Math.min(currentPage * rowsPerPage, filteredRoles.length)} {text.of}{" "}
-            {filteredRoles.length}
-          </span>
-        </div>
-        <CustomPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          rowsPerPage={rowsPerPage}
-          onPageChange={setCurrentPage}
-          onRowsPerPageChange={setRowsPerPage}
-          translations={{
-            showing: text.showing,
-            of: text.of,
-            perPage: text.perPage
-          }}
-        />
+      <div className="flex justify-end">
+      <CustomPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        rowsPerPage={rowsPerPage}
+        onPageChange={setCurrentPage}
+        onRowsPerPageChange={setRowsPerPage}
+        totalItems={filteredRoles.length}
+        translations={{
+          showing: text.showing,
+          of: text.of,
+          perPage: text.perPage,
+          rowsPerPage: text.perPage
+        }}
+      />
       </div>
+
+      {/* Loading Spinner */}
 
       {/* Add/Edit Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -958,4 +936,4 @@ const RolesManagement = ({ language, text }: RolesManagementProps) => {
   );
 };
 
-export default RolesManagement; 
+export default RolesManagement;
