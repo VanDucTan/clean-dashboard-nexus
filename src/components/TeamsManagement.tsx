@@ -538,46 +538,25 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
             </TableBody>
           </Table>
         </div>
-
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Select
-              value={rowsPerPage.toString()}
-              onValueChange={(value) => {
-                setRowsPerPage(parseInt(value));
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={pageSize.toString()}>
-                    {pageSize} {t[language].perPage}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">
-              {t[language].showing} {((currentPage - 1) * rowsPerPage) + 1}-
-              {Math.min(currentPage * rowsPerPage, filteredTeams.length)} {t[language].of}{" "}
-              {filteredTeams.length}
-            </span>
-          </div>
+        <div className="flex justify-end">
           <CustomPagination
             currentPage={currentPage}
             totalPages={totalPages}
             rowsPerPage={rowsPerPage}
+            totalItems={filteredTeams.length}
             onPageChange={setCurrentPage}
-            onRowsPerPageChange={setRowsPerPage}
+            onRowsPerPageChange={(value) => {
+              setRowsPerPage(value);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[5, 10, 20, 30, 40, 50]}
             translations={{
               showing: t[language].showing,
               of: t[language].of,
               perPage: t[language].perPage
             }}
           />
-        </div>
+          </div>
       </div>
 
       {/* Add/Edit Team Dialog */}
@@ -712,4 +691,4 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
   );
 };
 
-export default TeamsManagement; 
+export default TeamsManagement;

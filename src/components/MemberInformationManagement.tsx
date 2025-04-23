@@ -23,10 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { Edit2, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Textarea } from "@/components/ui/textarea";
+import CustomPagination from "@/components/ui/custom-pagination";
 
 interface MemberInformationManagementProps {
   language: 'en' | 'vi';
@@ -105,6 +106,8 @@ const t = {
     contactInfo: "Contact Information",
     teamInfo: "Team Information",
     addresses: "Addresses",
+    search: "Search by name, email, phone, NLT ID or Telegram",
+    memberInfo: "Member Information"
   },
   vi: {
     addMember: "Thêm thành viên",
@@ -152,11 +155,14 @@ const t = {
     contactInfo: "Thông tin liên hệ",
     teamInfo: "Thông tin Team",
     addresses: "Địa chỉ",
+    search: "Tìm kiếm theo tên, email, số điện thoại, mã NLT hoặc Telegram",
+    memberInfo: "Thông tin thành viên"
   }
 };
 
 const MemberInformationManagement: React.FC<MemberInformationManagementProps> = ({ language }) => {
   const [members, setMembers] = useState<MemberInformation[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<MemberInformation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -165,12 +171,31 @@ const MemberInformationManagement: React.FC<MemberInformationManagementProps> = 
   const [editingMember, setEditingMember] = useState<MemberInformation | null>(null);
   const [deletingMember, setDeletingMember] = useState<MemberInformation | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Calculate pagination
-  const totalPages = Math.ceil(members.length / rowsPerPage);
+  const totalPages = Math.ceil(filteredMembers.length / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
-  const paginatedMembers = members.slice(startIndex, endIndex);
+  const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
+
+  // Initialize filteredMembers with members
+  useEffect(() => {
+    setFilteredMembers(members);
+  }, [members]);
+
+  // Filter members based on search query
+  useEffect(() => {
+    const filtered = members.filter((member) =>
+      member.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      member.phone_number.includes(searchQuery) ||
+      (member.nlt_id && member.nlt_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (member.telegram_username && member.telegram_username.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+    setFilteredMembers(filtered);
+    setCurrentPage(1);
+  }, [searchQuery, members]);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -346,123 +371,108 @@ const MemberInformationManagement: React.FC<MemberInformationManagementProps> = 
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {language === 'en' ? 'Member Information' : 'Thông tin thành viên'}
-        </h2>
-        <Button onClick={() => handleEdit({ id: 0 } as MemberInformation)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t[language].addMember}
-        </Button>
-      </div>
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex flex-col space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">{t[language].memberInfo}</h1>
+          <Button onClick={() => handleEdit({ id: 0 } as MemberInformation)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t[language].addMember}
+          </Button>
+        </div>
 
-      {/* Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="whitespace-nowrap">{t[language].joinDate}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].fullName}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].email}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].phoneNumber}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].nltId}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].telegramUsername}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].teamPosition}</TableHead>
-              <TableHead className="whitespace-nowrap">{t[language].officialMember}</TableHead>
-              <TableHead className="whitespace-nowrap text-right">{t[language].actions}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+        {/* Search */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={t[language].search}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-10">
-                  <div className="flex justify-center items-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                  </div>
-                </TableCell>
+                <TableHead className="whitespace-nowrap">{t[language].joinDate}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].fullName}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].email}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].phoneNumber}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].nltId}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].telegramUsername}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].teamPosition}</TableHead>
+                <TableHead className="whitespace-nowrap">{t[language].officialMember}</TableHead>
+                <TableHead className="whitespace-nowrap text-right">{t[language].actions}</TableHead>
               </TableRow>
-            ) : paginatedMembers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center py-10">
-                  {t[language].noMembers}
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedMembers.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {member.join_date ? new Date(member.join_date).toLocaleDateString() : '-'}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{member.full_name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{member.email}</TableCell>
-                  <TableCell className="whitespace-nowrap">{member.phone_number}</TableCell>
-                  <TableCell className="whitespace-nowrap">{member.nlt_id || '-'}</TableCell>
-                  <TableCell className="whitespace-nowrap">{member.telegram_username || '-'}</TableCell>
-                  <TableCell className="whitespace-nowrap">{member.team_position || '-'}</TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {member.is_official_member ? t[language].yes : t[language].no}
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(member)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(member)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-10">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination Controls */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Select
-            value={rowsPerPage.toString()}
-            onValueChange={(value) => {
-              setRowsPerPage(parseInt(value));
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                <SelectItem key={pageSize} value={pageSize.toString()}>
-                  {pageSize} {t[language].perPage}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-muted-foreground">
-            {t[language].showing} {((currentPage - 1) * rowsPerPage) + 1}-
-            {Math.min(currentPage * rowsPerPage, members.length)} {t[language].of} {members.length}
-          </span>
+              ) : paginatedMembers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-10">
+                    {t[language].noMembers}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedMembers.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {member.join_date ? new Date(member.join_date).toLocaleDateString() : '-'}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{member.full_name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{member.email}</TableCell>
+                    <TableCell className="whitespace-nowrap">{member.phone_number}</TableCell>
+                    <TableCell className="whitespace-nowrap">{member.nlt_id || '-'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{member.telegram_username || '-'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{member.team_position || '-'}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {member.is_official_member ? t[language].yes : t[language].no}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(member)}>
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(member)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
+
+        {/* Pagination */}
+        <div className="flex justify-end">
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setCurrentPage}
+          onRowsPerPageChange={setRowsPerPage}
+          totalItems={filteredMembers.length}
+          translations={{
+            showing: t[language].showing,
+            of: t[language].of,
+            perPage: t[language].perPage
+          }}
+        />
         </div>
       </div>
 

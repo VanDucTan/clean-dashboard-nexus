@@ -580,38 +580,14 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Select
-              value={rowsPerPage.toString()}
-              onValueChange={(value) => {
-                setRowsPerPage(parseInt(value));
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[5, 10, 20, 30, 40, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={pageSize.toString()}>
-                    {pageSize} {t[language].perPage}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">
-              {t[language].showing} {((currentPage - 1) * rowsPerPage) + 1}-
-              {Math.min(currentPage * rowsPerPage, filteredInterviews.length)} {t[language].of}{" "}
-              {filteredInterviews.length}
-            </span>
-          </div>
+        <div className="flex justify-end">
           <CustomPagination
             currentPage={currentPage}
             totalPages={totalPages}
             rowsPerPage={rowsPerPage}
             onPageChange={setCurrentPage}
             onRowsPerPageChange={setRowsPerPage}
+            totalItems={filteredInterviews.length}
             translations={{
               showing: t[language].showing,
               of: t[language].of,
@@ -849,4 +825,4 @@ const InterviewManagement = ({ language }: InterviewManagementProps) => {
   );
 };
 
-export default InterviewManagement; 
+export default InterviewManagement;
