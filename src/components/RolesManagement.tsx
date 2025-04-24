@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Search, Edit, Trash2, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { PlusSquare, Search, Edit, Trash2, ChevronDown, ChevronRight, Check } from "lucide-react";
 import {
   Table,
   TableHeader,
@@ -108,7 +108,6 @@ interface RolesManagementProps {
     noRoles: string;
     showing: string;
     perPage: string;
-    rowsPerPage: string;  // Added this property
     editRole: string;
     create: string;
     searchPlaceholder: string;
@@ -596,27 +595,27 @@ const RolesManagement = ({ language, text }: RolesManagementProps) => {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header and Search */}
+      <div className="flex justify-between items-center gap-4">
         <h2 className="text-2xl font-bold">{text.title}</h2>
-        <Button onClick={() => openRoleDialog()}>
-          <PlusCircle className="w-4 h-4 mr-2" />
-          {text.create}
-        </Button>
-      </div>
-
-      {/* Search */}
-      {!isLoading && (
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={text.searchPlaceholder}
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex items-center gap-4 flex-1 justify-end">
+          {!isLoading && (
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={text.searchPlaceholder}
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          )}
+          <Button onClick={() => openRoleDialog()}>
+            <PlusSquare className="h-4 w-4" />
+            {language === 'en' ? 'Create' : 'Tạo mới'}
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* Table */}
       <div className="border rounded-lg">
@@ -781,8 +780,7 @@ const RolesManagement = ({ language, text }: RolesManagementProps) => {
         translations={{
           showing: text.showing,
           of: text.of,
-          perPage: text.perPage,
-          rowsPerPage: text.perPage
+          perPage: text.perPage
         }}
       />
       </div>

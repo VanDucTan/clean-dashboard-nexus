@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PlusCircle, Search, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, Search, Edit, Trash2, PlusSquare } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
 import {
   Table,
@@ -146,10 +146,10 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
     en: {
       title: "Teams Management",
       search: "Search teams...",
-      addTeam: "Create Team",
+      addTeam: "Create",
       name: "Name",
       description: "Description",
-      createdAt: "Date Create",
+      createdAt: "Created At",
       trainingGroup: "Training Group",
       isRecruiting: "Recruitment",
       deviceWorking: "Device Working",
@@ -157,7 +157,7 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
       actions: "Actions",
       edit: "Edit",
       delete: "Delete",
-      deleteConfirm: "Are you sure you want to delete this team?",
+      deleteConfirm: "Delete Team",
       deleteDescription: "This action cannot be undone. This will permanently delete the team and remove it from our servers.",
       cancel: "Cancel",
       confirm: "Confirm",
@@ -178,7 +178,7 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
     vi: {
       title: "Quản lý nhóm",
       search: "Tìm kiếm nhóm...",
-      addTeam: "Tạo nhóm",
+      addTeam: "Tạo mới",
       name: "Tên",
       description: "Mô tả",
       createdAt: "Ngày tạo",
@@ -430,133 +430,133 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
   const totalPages = Math.ceil(filteredTeams.length / rowsPerPage);
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-col space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">{t[language].title}</h1>
+    <div className="space-y-6 p-6">
+      {/* Header and Search */}
+      <div className="flex justify-between items-center gap-4">
+        <h2 className="text-2xl font-bold">{t[language].title}</h2>
+        <div className="flex items-center gap-4 flex-1 justify-end">
+          {!loading && (
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t[language].search}
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          )}
           <Button onClick={() => openTeamDialog()}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            {t[language].addTeam}
+            <PlusSquare className="h-4 w-4" />
+            {language === 'en' ? 'Create' : 'Tạo mới'}
           </Button>
         </div>
+      </div>
 
-        <div className="flex items-center mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t[language].search}
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
+      {/* Table */}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t[language].createdAt}</TableHead>
+              <TableHead>{t[language].name}</TableHead>
+              <TableHead className="hidden md:table-cell">{t[language].description}</TableHead>
+              <TableHead>{t[language].trainingGroup}</TableHead>
+              <TableHead className="text-center">{t[language].isRecruiting}</TableHead>
+              <TableHead>{t[language].deviceWorking}</TableHead>
+              <TableHead className="text-right">{t[language].quantityOfPositions}</TableHead>
+              <TableHead className="text-right">{t[language].actions}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
               <TableRow>
-                <TableHead>{t[language].createdAt}</TableHead>
-                <TableHead>{t[language].name}</TableHead>
-                <TableHead className="hidden md:table-cell">{t[language].description}</TableHead>
-                <TableHead>{t[language].trainingGroup}</TableHead>
-                <TableHead className="text-center">{t[language].isRecruiting}</TableHead>
-                <TableHead>{t[language].deviceWorking}</TableHead>
-                <TableHead className="text-right">{t[language].quantityOfPositions}</TableHead>
-                <TableHead className="text-right">{t[language].actions}</TableHead>
+                <TableCell colSpan={8} className="text-center py-4">
+                  {language === 'en' ? 'Loading teams...' : 'Đang tải danh sách nhóm...'}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-4">
-                    {language === 'en' ? 'Loading teams...' : 'Đang tải danh sách nhóm...'}
+            ) : currentTeams.length > 0 ? (
+              currentTeams.map((team) => (
+                <TableRow key={team.id}>
+                  <TableCell>
+                    {format(new Date(team.created_at), "MMM d, yyyy")}
                   </TableCell>
-                </TableRow>
-              ) : currentTeams.length > 0 ? (
-                currentTeams.map((team) => (
-                  <TableRow key={team.id}>
-                    <TableCell>
-                      {format(new Date(team.created_at), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell className="font-medium">{team.name}</TableCell>
-                    <TableCell className="hidden md:table-cell max-w-[300px] truncate">
-                      {team.description}
-                    </TableCell>
-                    <TableCell>
-                      <a 
-                        href={team.training_group} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline"
+                  <TableCell className="font-medium">{team.name}</TableCell>
+                  <TableCell className="hidden md:table-cell max-w-[300px] truncate">
+                    {team.description}
+                  </TableCell>
+                  <TableCell>
+                    <a 
+                      href={team.training_group} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      {team.training_group?.replace(/^https?:\/\/(www\.)?/i, '')}
+                    </a>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Checkbox checked={team.is_recruiting} disabled />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {team.device_working.map((device) => (
+                        <Badge key={device} variant="outline">
+                          {device}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {team.quantity_of_positions}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openTeamDialog(team)}
                       >
-                        {team.training_group?.replace(/^https?:\/\/(www\.)?/i, '')}
-                      </a>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Checkbox checked={team.is_recruiting} disabled />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {team.device_working.map((device) => (
-                          <Badge key={device} variant="outline">
-                            {device}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {team.quantity_of_positions}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => openTeamDialog(team)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => openDeleteDialog(team.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-4">
-                    {t[language].noResults}
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openDeleteDialog(team.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex justify-end">
-          <CustomPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            rowsPerPage={rowsPerPage}
-            totalItems={filteredTeams.length}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={(value) => {
-              setRowsPerPage(value);
-              setCurrentPage(1);
-            }}
-            pageSizeOptions={[5, 10, 20, 30, 40, 50]}
-            translations={{
-              showing: t[language].showing,
-              of: t[language].of,
-              perPage: t[language].perPage
-            }}
-          />
-          </div>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-4">
+                  {t[language].noResults}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex justify-end">
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          totalItems={filteredTeams.length}
+          onPageChange={setCurrentPage}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setCurrentPage(1);
+          }}
+          translations={{
+            showing: t[language].showing,
+            of: t[language].of,
+            perPage: t[language].perPage
+          }}
+        />
       </div>
 
       {/* Add/Edit Team Dialog */}

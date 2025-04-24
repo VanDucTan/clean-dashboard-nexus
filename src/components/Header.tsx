@@ -24,12 +24,12 @@ const Header = ({ isDarkMode, toggleTheme, language, toggleLanguage }: HeaderPro
       <div className="flex items-center gap-2">
         <Button 
           variant="outline" 
-          size="icon" 
+          size="sm"
           onClick={toggleLanguage}
-          className="rounded-full h-8 w-8"
+          className="rounded-full flex items-center gap-1.5 px-3"
         >
           <Globe size={16} />
-          <span className="ml-1 text-xs font-medium">{language === 'en' ? 'EN' : 'VI'}</span>
+          <span className="text-xs font-medium">{language === 'en' ? 'EN' : 'VI'}</span>
         </Button>
 
         <Button 

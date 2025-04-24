@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit2, Plus, Search, Trash2 } from 'lucide-react';
+import { Edit2, PlusSquare, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Textarea } from "@/components/ui/textarea";
@@ -61,7 +61,7 @@ interface MemberInformation {
 
 const t = {
   en: {
-    addMember: "Add Member",
+    addMember: "Create",
     fullName: "Full Name",
     email: "Email",
     phoneNumber: "Phone Number",
@@ -110,7 +110,7 @@ const t = {
     memberInfo: "Member Information"
   },
   vi: {
-    addMember: "Thêm thành viên",
+    addMember: "Tạo mới",
     fullName: "Họ và tên",
     email: "Email",
     phoneNumber: "Số điện thoại",
@@ -373,25 +373,23 @@ const MemberInformationManagement: React.FC<MemberInformationManagementProps> = 
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
+        {/* Header and Search */}
+        <div className="flex justify-between items-center gap-4">
           <h1 className="text-2xl font-bold">{t[language].memberInfo}</h1>
-          <Button onClick={() => handleEdit({ id: 0 } as MemberInformation)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t[language].addMember}
-          </Button>
-        </div>
-
-        {/* Search */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t[language].search}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
+          <div className="flex items-center gap-4 flex-1 justify-end">
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t[language].search}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Button onClick={() => handleEdit({ id: 0 } as MemberInformation)}>
+              <PlusSquare className="h-4 w-4" />
+              {t[language].addMember}
+            </Button>
           </div>
         </div>
 
