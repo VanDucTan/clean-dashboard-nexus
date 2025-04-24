@@ -189,7 +189,7 @@ const TeamsManagement = ({ language }: TeamsManagementProps) => {
       actions: "Hành động",
       edit: "Sửa",
       delete: "Xóa",
-      deleteConfirm: "Xóa nhóm",
+      deleteConfirm: "Bạn có chắc chắn muốn xóa nhóm này?",
       deleteDescription: "Hành động này không thể hoàn tác. Điều này sẽ xóa vĩnh viễn nhóm và xóa nó khỏi máy chủ của chúng tôi.",
       cancel: "Hủy",
       confirm: "Xác nhận",
