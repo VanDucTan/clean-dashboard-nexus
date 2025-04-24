@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Label } from "./ui/label";
-import { Edit2, Trash2, UserPlus, Search } from "lucide-react";
+import { Edit2, Trash2, PlusSquare, Search } from "lucide-react";
 import { useToast } from "./ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -489,29 +489,29 @@ const Accounts = ({ language }: AccountsProps) => {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Header and Search */}
+      <div className="flex justify-between items-center gap-4">
         <h2 className="text-2xl font-bold">
           {language === 'en' ? 'Accounts Management' : 'Quản lý tài khoản'}
         </h2>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          {t.createUser}
-        </Button>
-      </div>
-
-      {/* Search */}
-      {!isLoading && (
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t.searchPlaceholder}
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex items-center gap-4 flex-1 justify-end">
+          {!isLoading && (
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t.searchPlaceholder}
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          )}
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <PlusSquare className="h-4 w-4" />
+            {t.create}
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* Table */}
       <div className="border rounded-lg">

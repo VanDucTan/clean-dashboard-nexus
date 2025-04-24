@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Edit2, Plus, Download, Upload, Trash2, X } from "lucide-react";
+import { Search, Edit2, Plus, Download, Upload, Trash2, X, PlusSquare } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -578,7 +578,7 @@ const QuestionManagement = ({ language }: QuestionManagementProps) => {
             });
             setIsEditDialogOpen(true);
           }}>
-            <Plus className="mr-2 h-4 w-4" />
+            <PlusSquare className="h-4 w-4" />
             {t[language].create}
           </Button>
         </div>

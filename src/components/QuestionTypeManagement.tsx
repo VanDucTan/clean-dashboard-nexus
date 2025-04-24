@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, Edit2, Plus, Download, Upload, Trash2 } from "lucide-react";
+import { Search, Edit2, Plus, Download, Upload, Trash2, PlusSquare } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -378,114 +378,112 @@ const QuestionTypeManagement = ({ language }: QuestionTypeManagementProps) => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-col space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">{t[language].pageTitle}</h1>
-        </div>
-
-        {/* Search and Actions */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t[language].search}
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+    <div className="space-y-6 p-6">
+      {/* Header and Search */}
+      <div className="flex justify-between items-center gap-4">
+        <h2 className="text-2xl font-bold">{t[language].pageTitle}</h2>
+        <div className="flex items-center gap-4 flex-1 justify-end">
+          {!isLoading && (
+            <div className="relative max-w-md w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t[language].search}
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          )}
           <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t[language].create}
+            <PlusSquare className="h-4 w-4" />
+            {language === 'en' ? 'Create' : 'Tạo mới'}
           </Button>
         </div>
+      </div>
 
-        {/* Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
+      {/* Table */}
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">{t[language].name}</TableHead>
+              <TableHead className="whitespace-nowrap">{t[language].template}</TableHead>
+              <TableHead className="whitespace-nowrap">{t[language].team}</TableHead>
+              <TableHead className="whitespace-nowrap">{t[language].columnTitle}</TableHead>
+              <TableHead className="whitespace-nowrap">{t[language].link}</TableHead>
+              <TableHead className="whitespace-nowrap text-right">{t[language].actions}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
               <TableRow>
-                <TableHead className="whitespace-nowrap">{t[language].name}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].template}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].team}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].columnTitle}</TableHead>
-                <TableHead className="whitespace-nowrap">{t[language].link}</TableHead>
-                <TableHead className="whitespace-nowrap text-right">{t[language].actions}</TableHead>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex justify-center items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                    <span>{language === 'en' ? 'Loading...' : 'Đang tải...'}</span>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            ) : paginatedTypes.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  {language === 'en' ? 'No question types found' : 'Không tìm thấy loại câu hỏi nào'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedTypes.map((type) => (
+                <TableRow key={type.id}>
+                  <TableCell className="max-w-[150px] truncate">{type.name}</TableCell>
+                  <TableCell className="max-w-[150px] truncate">{type.template}</TableCell>
+                  <TableCell className="max-w-[150px] truncate">{type.team}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{type.title}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    {type.has_questions ? (
+                      <a
+                        href={type.link || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        {type.link}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground italic">
+                        {language === 'en' ? 'No questions available' : 'Chưa có câu hỏi'}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(type)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(type)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : paginatedTypes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
-                    {language === 'en' ? 'No question types found' : 'Không tìm thấy loại câu hỏi nào'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedTypes.map((type) => (
-                  <TableRow key={type.id}>
-                    <TableCell className="whitespace-nowrap max-w-[150px] truncate">{type.name}</TableCell>
-                    <TableCell className="whitespace-nowrap max-w-[150px] truncate">{type.template}</TableCell>
-                    <TableCell className="whitespace-nowrap max-w-[150px] truncate">{type.team}</TableCell>
-                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">{type.title}</TableCell>
-                    <TableCell className="whitespace-nowrap max-w-[200px] truncate">
-                      {type.has_questions ? (
-                        <a
-                          href={type.link || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
-                        >
-                          {type.link}
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 italic">
-                          {language === 'en' ? 'No questions available' : 'Chưa có câu hỏi'}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(type)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(type)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-        {/* Pagination Controls */}
-        <div className="flex justify-end">
-          <CustomPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={setRowsPerPage}
-            totalItems={filteredTypes.length}
-            translations={{
-              showing: t[language].showing,
-              of: t[language].of,
-              perPage: t[language].perPage
-            }}
-          />
-        </div>
+      <div className="flex justify-end">
+        <CustomPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setCurrentPage}
+          onRowsPerPageChange={setRowsPerPage}
+          totalItems={filteredTypes.length}
+          translations={{
+            showing: t[language].showing,
+            of: t[language].of,
+            perPage: t[language].perPage
+          }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

@@ -17,6 +17,7 @@ import {
   InputLabel,
 } from '@mui/material';
 import { toast } from 'react-toastify';
+import { PlusSquare } from 'lucide-react';
 
 interface QuestionTestManagementProps {
   language?: 'en' | 'vi';
@@ -83,6 +84,7 @@ const translations = {
     retake: 'Retake Test',
     backToHome: 'Back to Home',
     selectAnswer: 'Please select your answer',
+    create: 'Create',
   },
   vi: {
     emailLabel: 'Email',
@@ -102,6 +104,7 @@ const translations = {
     retake: 'Làm lại bài kiểm tra',
     backToHome: 'Quay về trang chủ',
     selectAnswer: 'Vui lòng chọn câu trả lời',
+    create: 'Tạo',
   },
 };
 
@@ -663,6 +666,20 @@ const QuestionTestManagement: React.FC<QuestionTestManagementProps> = ({ languag
 
   return (
     <Box sx={{ p: 3, minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          {t[language].testComplete}
+        </Typography>
+        <Button 
+          variant="contained"
+          onClick={handleStartTest}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+        >
+          <PlusSquare className="h-4 w-4" />
+          {t[language].create}
+        </Button>
+      </Box>
+
       <Typography variant="h6" gutterBottom sx={{ color: 'text.primary' }}>
         {`${currentQuestionIndex + 1}/${questions.length}: ${currentQuestion.question}`}
       </Typography>
